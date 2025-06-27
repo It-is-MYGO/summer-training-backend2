@@ -5,12 +5,12 @@ const authValidator = require('../validators/auth.validator');
 const authMiddleware = require('../../../lib/middleware/auth');
 
 router.post('/register', 
-  authValidator.register, 
+  authValidator.validateRegister, 
   authController.register
 );
 
 router.post('/login', 
-  authValidator.login,
+  authValidator.validateLogin,
   authController.login
 );
 
