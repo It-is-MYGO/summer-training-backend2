@@ -1,9 +1,37 @@
-// 负责数据库操作
+// 负责数据库操作（MySQL）
 const Product = require('../models/product');
+const ProductPrice = require('../../price/models/price');
+
 module.exports = {
   async findByKeyword(keyword) {
-    // 伪代码，实际根据ORM调整
-    return Product.find({ name: new RegExp(keyword, 'i') });
+    return await Product.findByKeyword(keyword);
   },
-  // 其他数据操作
+
+  async findHotProducts() {
+    return await Product.findHotProducts();
+  },
+
+  async findDropProducts() {
+    return await Product.findDropProducts();
+  },
+
+  async findById(id) {
+    return await Product.findById(id);
+  },
+
+  async findPriceHistory(productId) {
+    return await ProductPrice.findPriceHistory(productId);
+  },
+
+  async findPlatformPrices(productId) {
+    return await ProductPrice.findPlatformPrices(productId);
+  },
+
+  async findChartData(productId) {
+    return await ProductPrice.findChartData(productId);
+  },
+
+  async findMonthlyAverage(productId) {
+    return await ProductPrice.findMonthlyAverage(productId);
+  }
 };
