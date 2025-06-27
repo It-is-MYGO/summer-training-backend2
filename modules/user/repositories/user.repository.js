@@ -1,4 +1,4 @@
-const pool = require('../../../lib/database/pool'); // 使用公共的数据库连接池
+const pool = require('../../../lib/database/connection')// 使用公共的数据库连接池
 
 class UserRepository {
   async getUserByUsername(username) {
