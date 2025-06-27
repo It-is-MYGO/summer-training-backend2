@@ -16,6 +16,22 @@ class AuthRepository {
     );
     return result.insertId;
   }
+
+  async findById(id) {
+    const [rows] = await pool.query(
+      'SELECT id, username, email FROM users WHERE id = ?',
+      [id]
+    );
+    return rows[0];
+  }
+
+  async updateById(id, updateData) {
+    const [result] = await pool.query(
+      'UPDATE users SET ? WHERE id = ?',
+      [updateData, id]
+    );
+    return result.affectedRows > 0;
+  }
 }
 
 module.exports = new AuthRepository();

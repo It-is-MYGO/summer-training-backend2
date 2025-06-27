@@ -1,6 +1,6 @@
 const app = require('./app');
 const config = require('./config');
-const { connectDB } = require('./lib/database');
+const { connectDB } = require('./lib/database/connection');
 
 const port = config.server.port || 3000;
 
