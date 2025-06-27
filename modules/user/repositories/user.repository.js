@@ -7,10 +7,10 @@ class UserRepository {
     return rows[0] || null;
   }
 
-  async createUser(username, password, email) {
+  async createUser(username, password, email, isadmin = 0) {
     try {
-      const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
-      const [result] = await pool.query(sql, [username, password, email]);
+      const sql = 'INSERT INTO users (username, password, email, isadmin) VALUES (?, ?, ?, ?)';
+      const [result] = await pool.query(sql, [username, password, email, isadmin]);
       console.log('新用户插入成功，ID:', result.insertId);
       return result.insertId;
     } catch (err) {
