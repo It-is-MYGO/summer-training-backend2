@@ -51,7 +51,7 @@ class Product {
 
   static async findByKeyword(keyword) {
     const [rows] = await pool.query(
-      'SELECT * FROM products WHERE title LIKE ? OR desc LIKE ?',
+      'SELECT * FROM products WHERE title LIKE ? OR `desc` LIKE ?',
       [`%${keyword}%`, `%${keyword}%`]
     );
     return rows;

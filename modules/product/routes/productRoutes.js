@@ -29,4 +29,7 @@ router.get('/:id/chart-data', productController.getChartData);
 // 价格预测
 router.get('/:id/price-prediction', productController.getPricePrediction);
 
+// 获取全部商品或分页商品
+router.get('/', productController.getAllProducts);
+
 module.exports = router;
