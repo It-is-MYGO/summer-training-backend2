@@ -5,8 +5,8 @@ const { pool } = require('../../../lib/database/connection');
 
 class AuthService {
   async register(userData) {
-    // 直接存明文密码
-    const userId = await userRepository.createUser(userData.username, userData.password, userData.email);
+    // 直接存储明文密码，isadmin 默认为 0
+    const userId = await userRepository.createUser(userData.username, userData.password, userData.email, 0);
     return userId;
   }
 
@@ -27,7 +27,7 @@ class AuthService {
       throw error;
     }
     return {
-      user: { id: user.id, username: user.username },
+      user: { id: user.id, username: user.username, isadmin: user.isadmin },
       token: jwt.sign({ id: user.id }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN })
     };
   }
