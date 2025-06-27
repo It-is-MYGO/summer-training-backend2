@@ -2,60 +2,51 @@
 const { pool } = require('../../../lib/database/connection');
 
 module.exports = {
-  async findByUserId(userId) {
-    const [rows] = await pool.query(
-      'SELECT * FROM favorites WHERE user_id = ? ORDER BY id DESC',
-      [userId]
-    );
-    return rows;
-  },
-
-  async findByUserAndProduct(userId, productId) {
-    const [rows] = await pool.query(
-      'SELECT * FROM favorites WHERE user_id = ? AND product_id = ?',
-      [userId, productId]
-    );
-    return rows[0];
-  },
-
-  async findProductById(productId) {
-    const [rows] = await pool.query(
-      'SELECT * FROM products WHERE id = ?',
-      [productId]
-    );
-    return rows[0];
-  },
-
-  async findLatestPrice(productId) {
+  async findAll() {
     const [rows] = await pool.query(`
-      SELECT * FROM product_prices 
-      WHERE product_id = ? 
-      ORDER BY date DESC 
-      LIMIT 1
-    `, [productId]);
-    return rows[0];
+      SELECT 
+        f.id,
+        f.product_id,
+        f.alert_price,
+        p.title,
+        p.price,
+        p.img,
+        (p.price - f.alert_price) as price_change
+      FROM favorites f
+      JOIN products p ON f.product_id = p.id
+      ORDER BY f.created_at DESC
+    `);
+    
+    return rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      price: row.price,
+      priceChange: parseFloat(row.price_change) || 0,
+      alertPrice: parseFloat(row.alert_price) || 0,
+      img: row.img
+    }));
   },
 
-  async create(favoriteData) {
+  async create(productId, userId) {
     const [result] = await pool.query(
-      'INSERT INTO favorites SET ?',
-      [favoriteData]
+      'INSERT INTO favorites (user_id, product_id, alert_price) VALUES (?, ?, ?)',
+      [userId, productId, 0]
     );
     return result;
   },
 
-  async deleteById(userId, favoriteId) {
+  async delete(id) {
     const [result] = await pool.query(
-      'DELETE FROM favorites WHERE id = ? AND user_id = ?',
-      [favoriteId, userId]
+      'DELETE FROM favorites WHERE id = ?',
+      [id]
     );
     return result;
   },
 
-  async updateAlertPrice(userId, favoriteId, alertPrice) {
+  async updateAlertPrice(id, alertPrice) {
     const [result] = await pool.query(
-      'UPDATE favorites SET alert_price = ? WHERE id = ? AND user_id = ?',
-      [alertPrice, favoriteId, userId]
+      'UPDATE favorites SET alert_price = ? WHERE id = ?',
+      [alertPrice, id]
     );
     return result;
   }

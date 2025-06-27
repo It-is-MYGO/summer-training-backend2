@@ -3,25 +3,22 @@ const favoriteService = require('../services/favoriteService');
 module.exports = {
   async getFavorites(req, res) {
     try {
-      const userId = req.user?.id || 1; // 临时使用默认用户ID，实际应该从JWT获取
-      const favorites = await favoriteService.getFavorites(userId);
+      const favorites = await favoriteService.getFavorites();
       res.json(favorites);
     } catch (error) {
-      res.status(500).json({ message: '获取收藏失败', error: error.message });
+      res.status(500).json({ message: '获取收藏列表失败', error: error.message });
     }
   },
 
   async addFavorite(req, res) {
     try {
-      const userId = req.user?.id || 1;
-      const { product_id, alert_price } = req.body;
-      
-      if (!product_id) {
-        return res.status(400).json({ message: '商品ID不能为空' });
+      const { productId, userId } = req.body;
+      if (!productId || !userId) {
+        return res.status(400).json({ message: '商品ID和用户ID不能为空' });
       }
       
-      const result = await favoriteService.addFavorite(userId, product_id, alert_price);
-      res.status(201).json(result);
+      const result = await favoriteService.addFavorite(productId, userId);
+      res.json({ message: '添加收藏成功', id: result.insertId });
     } catch (error) {
       res.status(500).json({ message: '添加收藏失败', error: error.message });
     }
@@ -29,11 +26,14 @@ module.exports = {
 
   async removeFavorite(req, res) {
     try {
-      const userId = req.user?.id || 1;
       const { id } = req.params;
+      const result = await favoriteService.removeFavorite(id);
       
-      const result = await favoriteService.removeFavorite(userId, id);
-      res.json(result);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: '收藏不存在' });
+      }
+      
+      res.json({ message: '移除收藏成功' });
     } catch (error) {
       res.status(500).json({ message: '移除收藏失败', error: error.message });
     }
@@ -41,16 +41,20 @@ module.exports = {
 
   async setAlertPrice(req, res) {
     try {
-      const userId = req.user?.id || 1;
       const { id } = req.params;
-      const { alert_price } = req.body;
+      const { alertPrice } = req.body;
       
-      if (!alert_price || alert_price <= 0) {
+      if (!alertPrice || alertPrice <= 0) {
         return res.status(400).json({ message: '提醒价格必须大于0' });
       }
       
-      const result = await favoriteService.setAlertPrice(userId, id, alert_price);
-      res.json(result);
+      const result = await favoriteService.setAlertPrice(id, alertPrice);
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: '收藏不存在' });
+      }
+      
+      res.json({ message: '设置提醒价格成功' });
     } catch (error) {
       res.status(500).json({ message: '设置提醒价格失败', error: error.message });
     }

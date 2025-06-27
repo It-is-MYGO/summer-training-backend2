@@ -66,13 +66,30 @@ module.exports = {
     }
   },
 
+  // 统一的图表数据接口，支持基础版和增强版
   async getChartData(req, res) {
     try {
       const { id } = req.params;
-      const chartData = await productService.getChartData(id);
+      const { enhanced } = req.query;
+      
+      // 通过查询参数控制是否返回增强数据
+      const isEnhanced = enhanced === 'true' || enhanced === '1';
+      const chartData = await productService.getChartData(id, isEnhanced);
+      
       res.json(chartData);
     } catch (error) {
       res.status(500).json({ message: '获取图表数据失败', error: error.message });
+    }
+  },
+
+  // 获取价格预测
+  async getPricePrediction(req, res) {
+    try {
+      const { id } = req.params;
+      const prediction = await productService.getPricePrediction(id);
+      res.json(prediction);
+    } catch (error) {
+      res.status(500).json({ message: '获取价格预测失败', error: error.message });
     }
   }
 };

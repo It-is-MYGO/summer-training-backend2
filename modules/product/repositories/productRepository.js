@@ -33,5 +33,13 @@ module.exports = {
 
   async findMonthlyAverage(productId) {
     return await ProductPrice.findMonthlyAverage(productId);
+  },
+
+  async findPriceFluctuation(productId) {
+    return await ProductPrice.findPriceFluctuation(productId);
+  },
+
+  async findRecentPriceTrend(productId, days = 7) {
+    return await ProductPrice.findRecentPriceTrend(productId, days);
   }
 };
