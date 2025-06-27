@@ -132,32 +132,57 @@ class PostRepository {
 
     const offset = (page - 1) * pageSize;
 
+    // 用数组收集select字段，最后join，避免多余逗号
+    let selectFields = [
+      'p.*',
+      'u.username',
+      'u.avatar as userAvatar',
+      '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes',
+      '(SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments',
+      '(SELECT COUNT(*) FROM post_shares WHERE postId = p.id) as shares'
+    ];
+    let queryParams = [];
+    if (currentUserId) {
+      selectFields.push(
+        '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked',
+        '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete'
+      );
+      queryParams = [
+        ...params,
+        currentUserId, // isLiked
+        currentUserId, // isCollected
+        currentUserId, // canEdit (p.userId = ?)
+        currentUserId, // canEdit (EXISTS ... id = ?)
+        currentUserId, // canDelete (p.userId = ?)
+        currentUserId, // canDelete (EXISTS ... id = ?)
+        pageSize,
+        offset
+      ];
+    } else {
+      selectFields.push(
+        '0 as isLiked',
+        '0 as isCollected',
+        '0 as canEdit',
+        '0 as canDelete'
+      );
+      queryParams = [...params, pageSize, offset];
+    }
+
     const query = `
-      SELECT 
-        p.*,
-        u.username,
-        u.avatar as userAvatar,
-        (SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes,
-        (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments,
-        (SELECT COUNT(*) FROM post_shares WHERE postId = p.id) as shares,
-        ${currentUserId ? '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked,' : '0 as isLiked,'}
-        ${currentUserId ? '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected,' : '0 as isCollected,'}
-        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit,' : '0 as canEdit,'}
-        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete' : '0 as canDelete'}
+      SELECT
+        ${selectFields.join(',\n')}
       FROM posts p
       LEFT JOIN users u ON p.userId = u.id
       ${whereClause}
       ${orderClause}
       LIMIT ? OFFSET ?
     `;
-
-    const queryParams = currentUserId ? 
-      [...params, currentUserId, currentUserId, currentUserId, currentUserId, currentUserId, currentUserId, pageSize, offset] :
-      [...params, pageSize, offset];
-
+    console.log('最终SQL:', query);
+    console.log('参数:', queryParams);
     try {
       const [rows] = await pool.execute(query, queryParams);
-      
       // 获取总数
       const countQuery = `
         SELECT COUNT(*) as total
@@ -165,7 +190,6 @@ class PostRepository {
         LEFT JOIN users u ON p.userId = u.id
         ${whereClause}
       `;
-      
       const [countRows] = await pool.execute(countQuery, params);
       const total = countRows[0].total;
 

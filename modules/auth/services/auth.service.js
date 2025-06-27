@@ -5,7 +5,7 @@ const { pool } = require('../../../lib/database/connection');
 
 class AuthService {
   async register(userData) {
-    // 直接存储明文密码
+    // 直接存明文密码
     const userId = await userRepository.createUser(userData.username, userData.password, userData.email);
     return userId;
   }
@@ -37,9 +37,7 @@ class AuthService {
   }
 
   async updateProfile(userId, updateData) {
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
+    // 直接存明文密码
     return await userRepository.updateById(userId, updateData);
   }
 }
