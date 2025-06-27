@@ -4,6 +4,8 @@ const path = require('path');
 const authRoutes = require('./modules/auth/routes/auth.routes');
 const postRoutes = require('./modules/post/routes/post.routes');
 const uploadRoutes = require('./modules/upload/routes/upload.routes');
+// const productRoutes = require('./modules/product/routes/productRoutes');
+// const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
 const errorHandler = require('./lib/middleware/errorHandler');
 
 const app = express();
@@ -20,6 +22,21 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/upload', uploadRoutes);
+// app.use('/api/products', productRoutes);
+// app.use('/api/favorites', favoriteRoutes);
+
+// 根路径测试
+app.get('/', (req, res) => {
+  res.json({ 
+    message: '商品比价系统后端服务启动成功！',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      // products: '/api/products',
+      // favorites: '/api/favorites'
+    }
+  });
+});
 
 // 错误处理（必须放在最后）
 app.use(errorHandler);
