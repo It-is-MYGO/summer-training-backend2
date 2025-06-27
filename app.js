@@ -1,6 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const authRoutes = require('./modules/auth/routes/auth.routes');
+const postRoutes = require('./modules/post/routes/post.routes');
+const uploadRoutes = require('./modules/upload/routes/upload.routes');
+// const productRoutes = require('./modules/product/routes/productRoutes');
+// const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
 const errorHandler = require('./lib/middleware/errorHandler');
 
 const app = express();
@@ -26,20 +31,28 @@ app.get('/', (req, res) => {
     ]
   });
 });
+app.use(express.urlencoded({ extended: true }));
+
+// 静态文件服务 - 用于访问上传的图片
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 路由
 app.use('/api/auth', authRoutes);
-app.get('/hello', (req, res) => {
-  res.send('Hello World!');
-});
+app.use('/api/posts', postRoutes);
+app.use('/api/upload', uploadRoutes);
+// app.use('/api/products', productRoutes);
+// app.use('/api/favorites', favoriteRoutes);
 
-// 3. 添加 404 处理器
-app.all('*', (req, res) => {
-  res.status(404).json({
-    error: 'Endpoint Not Found',
-    path: req.originalUrl,
-    method: req.method,
-    suggested: '/api/auth or /hello'
+// 根路径测试
+app.get('/', (req, res) => {
+  res.json({ 
+    message: '商品比价系统后端服务启动成功！',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      // products: '/api/products',
+      // favorites: '/api/favorites'
+    }
   });
 });
 

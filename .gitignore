@@ -1,5 +1,8 @@
 # Node
 *.node_modules
+*.package-lock.json
+*package-lock.json
+*package.json
 
 # 日志
 logs/
