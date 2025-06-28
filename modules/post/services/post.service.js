@@ -131,9 +131,9 @@ class PostService {
   async checkUserIsAdmin(userId) {
     try {
       const { pool } = require('../../../lib/database/connection');
-      const query = 'SELECT role FROM users WHERE id = ?';
+      const query = 'SELECT isadmin FROM users WHERE id = ?';
       const [rows] = await pool.execute(query, [userId]);
-      return rows.length > 0 && rows[0].role === 'admin';
+      return rows.length > 0 && rows[0].isadmin === 1;
     } catch (error) {
       return false;
     }

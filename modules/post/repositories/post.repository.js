@@ -69,8 +69,8 @@ class PostRepository {
         (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments,
         ${currentUserId ? '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked,' : '0 as isLiked,'}
         ${currentUserId ? '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected,' : '0 as isCollected,'}
-        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit,' : '0 as canEdit,'}
-        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete' : '0 as canDelete'}
+        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit,' : '0 as canEdit,'}
+        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete' : '0 as canDelete'}
       FROM posts p
       LEFT JOIN users u ON p.userId = u.id
       WHERE p.id = ?
@@ -143,8 +143,8 @@ class PostRepository {
       selectFields.push(
         '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked',
         '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected',
-        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit',
-        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete'
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete'
       );
       selectParams.push(
         currentUserId, currentUserId,
@@ -209,7 +209,7 @@ class PostRepository {
   async delete(id, userId) {
     const query = `
       DELETE FROM posts 
-      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin"))
+      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1))
     `;
 
     try {
@@ -224,7 +224,7 @@ class PostRepository {
   async deleteAllUserPosts(targetUserId, currentUserId) {
     const query = `
       DELETE FROM posts 
-      WHERE userId = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin"))
+      WHERE userId = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1))
     `;
 
     try {
@@ -328,7 +328,7 @@ class PostRepository {
   async deleteComment(commentId, userId) {
     const query = `
       DELETE FROM post_comments 
-      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin"))
+      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1))
     `;
 
     try {
@@ -420,8 +420,8 @@ class PostRepository {
         (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments,
         (SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked,
         (SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected,
-        (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit,
-        (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete,
+        (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit,
+        (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete,
         pc.createdAt as collectedAt
       FROM post_collections pc
       LEFT JOIN posts p ON pc.postId = p.id
@@ -522,8 +522,8 @@ class PostRepository {
       selectFields.push(
         '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked',
         '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected',
-        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit',
-        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete'
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete'
       );
       selectParams.push(
         currentUserId, currentUserId,
