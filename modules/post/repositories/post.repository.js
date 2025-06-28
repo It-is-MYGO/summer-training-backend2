@@ -15,10 +15,10 @@ class PostRepository {
       content,
       JSON.stringify(images || []),
       userId,
-      timestamp,
+      toMySQLDateTime(timestamp ?? null),
       JSON.stringify(tags || []),
-      location,
-      visibility || 'public',
+      location ?? null,
+      visibility ?? 'public',
       product ? JSON.stringify(product) : null
     ];
 
@@ -44,7 +44,7 @@ class PostRepository {
       content,
       JSON.stringify(images || []),
       JSON.stringify(tags || []),
-      location,
+      location || null,
       visibility || 'public',
       product ? JSON.stringify(product) : null,
       id
@@ -67,11 +67,10 @@ class PostRepository {
         u.avatar as userAvatar,
         (SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes,
         (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments,
-        (SELECT COUNT(*) FROM post_shares WHERE postId = p.id) as shares,
         ${currentUserId ? '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked,' : '0 as isLiked,'}
         ${currentUserId ? '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected,' : '0 as isCollected,'}
-        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit,' : '0 as canEdit,'}
-        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete' : '0 as canDelete'}
+        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit,' : '0 as canEdit,'}
+        ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete' : '0 as canDelete'}
       FROM posts p
       LEFT JOIN users u ON p.userId = u.id
       WHERE p.id = ?
@@ -111,16 +110,16 @@ class PostRepository {
     } = options;
 
     let whereClause = 'WHERE p.visibility = "public"';
-    let params = [];
+    let whereParams = [];
 
     if (keyword) {
       whereClause += ' AND (p.content LIKE ? OR u.username LIKE ?)';
-      params.push(`%${keyword}%`, `%${keyword}%`);
+      whereParams.push(`%${keyword}%`, `%${keyword}%`);
     }
 
     if (tag) {
       whereClause += ' AND JSON_CONTAINS(p.tags, ?)';
-      params.push(`"${tag}"`);
+      whereParams.push(`"${tag}"`);
     }
 
     let orderClause = 'ORDER BY p.createdAt DESC';
@@ -132,34 +131,26 @@ class PostRepository {
 
     const offset = (page - 1) * pageSize;
 
-    // 用数组收集select字段，最后join，避免多余逗号
     let selectFields = [
       'p.*',
       'u.username',
       'u.avatar as userAvatar',
       '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes',
-      '(SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments',
-      '(SELECT COUNT(*) FROM post_shares WHERE postId = p.id) as shares'
+      '(SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments'
     ];
-    let queryParams = [];
+    let selectParams = [];
     if (currentUserId) {
       selectFields.push(
         '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked',
         '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected',
-        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canEdit',
-        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin")) as canDelete'
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete'
       );
-      queryParams = [
-        ...params,
-        currentUserId, // isLiked
-        currentUserId, // isCollected
-        currentUserId, // canEdit (p.userId = ?)
-        currentUserId, // canEdit (EXISTS ... id = ?)
-        currentUserId, // canDelete (p.userId = ?)
-        currentUserId, // canDelete (EXISTS ... id = ?)
-        pageSize,
-        offset
-      ];
+      selectParams.push(
+        currentUserId, currentUserId,
+        currentUserId, currentUserId,
+        currentUserId, currentUserId
+      );
     } else {
       selectFields.push(
         '0 as isLiked',
@@ -167,8 +158,11 @@ class PostRepository {
         '0 as canEdit',
         '0 as canDelete'
       );
-      queryParams = [...params, pageSize, offset];
     }
+
+    const pageSizeNum = Number(pageSize);
+    const offsetNum = Number(offset);
+    const finalParams = [...whereParams, ...selectParams];
 
     const query = `
       SELECT
@@ -177,12 +171,11 @@ class PostRepository {
       LEFT JOIN users u ON p.userId = u.id
       ${whereClause}
       ${orderClause}
-      LIMIT ? OFFSET ?
+      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
     `;
-    console.log('最终SQL:', query);
-    console.log('参数:', queryParams);
+    
     try {
-      const [rows] = await pool.execute(query, queryParams);
+      const [rows] = await pool.execute(query, finalParams);
       // 获取总数
       const countQuery = `
         SELECT COUNT(*) as total
@@ -190,7 +183,7 @@ class PostRepository {
         LEFT JOIN users u ON p.userId = u.id
         ${whereClause}
       `;
-      const [countRows] = await pool.execute(countQuery, params);
+      const [countRows] = await pool.execute(countQuery, whereParams);
       const total = countRows[0].total;
 
       const posts = rows.map(row => {
@@ -216,7 +209,7 @@ class PostRepository {
   async delete(id, userId) {
     const query = `
       DELETE FROM posts 
-      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin"))
+      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1))
     `;
 
     try {
@@ -224,6 +217,21 @@ class PostRepository {
       return result.affectedRows > 0;
     } catch (error) {
       throw new Error(`删除动态失败: ${error.message}`);
+    }
+  }
+
+  // 删除用户所有动态
+  async deleteAllUserPosts(targetUserId, currentUserId) {
+    const query = `
+      DELETE FROM posts 
+      WHERE userId = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1))
+    `;
+
+    try {
+      const [result] = await pool.execute(query, [targetUserId, currentUserId, currentUserId]);
+      return result.affectedRows;
+    } catch (error) {
+      throw new Error(`删除用户所有动态失败: ${error.message}`);
     }
   }
 
@@ -320,7 +328,7 @@ class PostRepository {
   async deleteComment(commentId, userId) {
     const query = `
       DELETE FROM post_comments 
-      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND role = "admin"))
+      WHERE id = ? AND (userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1))
     `;
 
     try {
@@ -328,6 +336,132 @@ class PostRepository {
       return result.affectedRows > 0;
     } catch (error) {
       throw new Error(`删除评论失败: ${error.message}`);
+    }
+  }
+
+  // 获取动态评论列表
+  async getComments(postId, options = {}) {
+    const {
+      page = 1,
+      pageSize = 20,
+      sort = 'latest'
+    } = options;
+
+    let orderClause = 'ORDER BY c.createdAt DESC';
+    if (sort === 'oldest') {
+      orderClause = 'ORDER BY c.createdAt ASC';
+    }
+
+    const offset = (page - 1) * pageSize;
+    const pageSizeNum = Number(pageSize);
+    const offsetNum = Number(offset);
+
+    const query = `
+      SELECT 
+        c.*,
+        u.username,
+        u.avatar as userAvatar
+      FROM post_comments c
+      LEFT JOIN users u ON c.userId = u.id
+      WHERE c.postId = ?
+      ${orderClause}
+      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
+    `;
+
+    try {
+      const [rows] = await pool.execute(query, [postId]);
+      
+      // 获取总数
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM post_comments
+        WHERE postId = ?
+      `;
+      const [countRows] = await pool.execute(countQuery, [postId]);
+      const total = countRows[0].total;
+
+      return {
+        list: rows,
+        total,
+        page,
+        pageSize
+      };
+    } catch (error) {
+      throw new Error(`获取评论列表失败: ${error.message}`);
+    }
+  }
+
+  // 获取用户收藏的动态列表
+  async getUserCollections(options = {}) {
+    const {
+      page = 1,
+      pageSize = 10,
+      sort = 'latest',
+      userId
+    } = options;
+
+    let orderClause = 'ORDER BY pc.createdAt DESC';
+    if (sort === 'oldest') {
+      orderClause = 'ORDER BY pc.createdAt ASC';
+    } else if (sort === 'popular') {
+      orderClause = 'ORDER BY likes DESC, pc.createdAt DESC';
+    }
+
+    const offset = (page - 1) * pageSize;
+    const pageSizeNum = Number(pageSize);
+    const offsetNum = Number(offset);
+
+    const query = `
+      SELECT 
+        p.*,
+        u.username,
+        u.avatar as userAvatar,
+        (SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes,
+        (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments,
+        (SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked,
+        (SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected,
+        (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit,
+        (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete,
+        pc.createdAt as collectedAt
+      FROM post_collections pc
+      LEFT JOIN posts p ON pc.postId = p.id
+      LEFT JOIN users u ON p.userId = u.id
+      WHERE pc.userId = ?
+      ${orderClause}
+      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
+    `;
+
+    try {
+      const [rows] = await pool.execute(query, [
+        userId, userId, userId, userId, userId, userId, userId
+      ]);
+      
+      // 获取总数
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM post_collections pc
+        LEFT JOIN posts p ON pc.postId = p.id
+        WHERE pc.userId = ?
+      `;
+      const [countRows] = await pool.execute(countQuery, [userId]);
+      const total = countRows[0].total;
+
+      const posts = rows.map(row => {
+        row.isLiked = row.isLiked > 0;
+        row.isCollected = row.isCollected > 0;
+        row.canEdit = row.canEdit > 0;
+        row.canDelete = row.canDelete > 0;
+        return Post.fromDatabase(row);
+      });
+
+      return {
+        list: posts,
+        total,
+        page,
+        pageSize
+      };
+    } catch (error) {
+      throw new Error(`获取用户收藏动态失败: ${error.message}`);
     }
   }
 
@@ -352,6 +486,115 @@ class PostRepository {
       throw new Error(`获取标签列表失败: ${error.message}`);
     }
   }
+
+  // 获取用户个人动态
+  async findUserPosts(options = {}) {
+    const {
+      page = 1,
+      pageSize = 10,
+      sort = 'latest',
+      targetUserId,
+      currentUserId = null
+    } = options;
+
+    let whereClause = 'WHERE p.userId = ?';
+    let whereParams = [targetUserId];
+
+    let orderClause = 'ORDER BY p.createdAt DESC';
+    if (sort === 'popular') {
+      orderClause = 'ORDER BY likes DESC, p.createdAt DESC';
+    } else if (sort === 'oldest') {
+      orderClause = 'ORDER BY p.createdAt ASC';
+    }
+
+    const offset = (page - 1) * pageSize;
+
+    let selectFields = [
+      'p.*',
+      'u.username',
+      'u.avatar as userAvatar',
+      '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes',
+      '(SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments'
+    ];
+    let selectParams = [];
+    
+    if (currentUserId) {
+      selectFields.push(
+        '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked',
+        '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit',
+        '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete'
+      );
+      selectParams.push(
+        currentUserId, currentUserId,
+        currentUserId, currentUserId,
+        currentUserId, currentUserId
+      );
+    } else {
+      selectFields.push(
+        '0 as isLiked',
+        '0 as isCollected',
+        '0 as canEdit',
+        '0 as canDelete'
+      );
+    }
+
+    const pageSizeNum = Number(pageSize);
+    const offsetNum = Number(offset);
+    const finalParams = [...whereParams, ...selectParams];
+
+    const query = `
+      SELECT
+        ${selectFields.join(',\n')}
+      FROM posts p
+      LEFT JOIN users u ON p.userId = u.id
+      ${whereClause}
+      ${orderClause}
+      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
+    `;
+    
+    try {
+      const [rows] = await pool.execute(query, finalParams);
+      
+      // 获取总数
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM posts p
+        LEFT JOIN users u ON p.userId = u.id
+        ${whereClause}
+      `;
+      const [countRows] = await pool.execute(countQuery, whereParams);
+      const total = countRows[0].total;
+
+      const posts = rows.map(row => {
+        row.isLiked = row.isLiked > 0;
+        row.isCollected = row.isCollected > 0;
+        row.canEdit = row.canEdit > 0;
+        row.canDelete = row.canDelete > 0;
+        return Post.fromDatabase(row);
+      });
+
+      return {
+        list: posts,
+        total,
+        page,
+        pageSize
+      };
+    } catch (error) {
+      throw new Error(`获取用户动态失败: ${error.message}`);
+    }
+  }
+}
+
+// 工具函数：将ISO时间字符串转为MySQL DATETIME格式
+function toMySQLDateTime(date) {
+  if (!date) return null;
+  if (date instanceof Date) {
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+  }
+  const d = new Date(date);
+  if (isNaN(d)) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 module.exports = new PostRepository(); 

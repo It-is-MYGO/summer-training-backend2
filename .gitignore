@@ -32,5 +32,5 @@ dist/
 build/
 .idea/
 .vscode/
-package-lock.json
 uploads/
+config/database.js
