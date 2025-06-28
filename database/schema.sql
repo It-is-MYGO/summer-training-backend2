@@ -50,16 +50,6 @@ CREATE TABLE IF NOT EXISTS post_comments (
   INDEX idx_createdAt (createdAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='动态评论表';
 
--- 动态分享表
-CREATE TABLE IF NOT EXISTS post_shares (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  postId INT NOT NULL COMMENT '动态ID',
-  userId INT NOT NULL COMMENT '分享者用户ID',
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_postId (postId),
-  INDEX idx_userId (userId)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='动态分享表';
-
 -- 确保users表存在（如果不存在则创建）
 CREATE TABLE IF NOT EXISTS users (
   id INT PRIMARY KEY AUTO_INCREMENT,
