@@ -40,6 +40,7 @@ class AuthService {
   }
 
   async updateProfile(userId, updateData) {
+    // 直接存明文密码
     return await userRepository.updateById(userId, updateData);
   }
 }

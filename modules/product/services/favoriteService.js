@@ -2,12 +2,16 @@
 const favoriteRepository = require('../repositories/favoriteRepository');
 
 module.exports = {
-  async getFavorites() {
-    return await favoriteRepository.findAll();
+  async getFavorites(userId) {
+    return await favoriteRepository.findAll(userId);
   },
 
   async addFavorite(productId, userId) {
-    return await favoriteRepository.create(productId, userId);
+    const result = await favoriteRepository.create(productId, userId);
+    if (result.duplicate) {
+      return { duplicate: true, id: result.id };
+    }
+    return result;
   },
 
   async removeFavorite(id) {
@@ -16,5 +20,9 @@ module.exports = {
 
   async setAlertPrice(id, alertPrice) {
     return await favoriteRepository.updateAlertPrice(id, alertPrice);
+  },
+
+  async checkFavorite(userId, productId) {
+    return await favoriteRepository.checkFavorite(userId, productId);
   }
 }; 

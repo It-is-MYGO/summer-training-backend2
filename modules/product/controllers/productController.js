@@ -37,11 +37,11 @@ module.exports = {
     try {
       const { id } = req.params;
       const product = await productService.getProductDetail(id);
+      if (!product) {
+        return res.status(404).json({ message: '商品不存在' });
+      }
       res.json(product);
     } catch (error) {
-      if (error.message === '商品不存在') {
-        return res.status(404).json({ message: error.message });
-      }
       res.status(500).json({ message: '获取商品详情失败', error: error.message });
     }
   },
@@ -63,6 +63,15 @@ module.exports = {
       res.json(prices);
     } catch (error) {
       res.status(500).json({ message: '获取平台价格失败', error: error.message });
+    }
+  },
+
+  async getAllProducts(req, res) {
+    try {
+      const products = await productService.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: '获取全部商品失败', error: error.message });
     }
   },
 
@@ -93,3 +102,5 @@ module.exports = {
     }
   }
 };
+
+console.log('productController:', module.exports);

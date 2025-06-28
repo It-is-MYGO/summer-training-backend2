@@ -260,17 +260,16 @@ class PostController {
   // 获取推荐动态
   async getRecommendPosts(req, res) {
     try {
-      const { userId } = req.query;
-      const { limit = 10 } = req.query;
-
-      const posts = await postService.getRecommendPosts(userId, parseInt(limit));
-
+      const userId = req.query.userId ? parseInt(req.query.userId) : null;
+      const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+      const posts = await postService.getRecommendPosts(userId, limit);
       res.json({
         code: 0,
         message: 'success',
         data: posts.map(post => post.toJSON())
       });
     } catch (error) {
+      console.error('getRecommendPosts error:', error);
       res.status(400).json({
         code: 1,
         message: error.message,
