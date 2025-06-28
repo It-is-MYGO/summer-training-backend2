@@ -1,0 +1,208 @@
+const postRepository = require('../repositories/post.repository');
+
+class PostService {
+  // 创建动态
+  async createPost(postData) {
+    try {
+      // 验证必填字段
+      if (!postData.content || !postData.userId) {
+        throw new Error('动态内容和用户ID不能为空');
+      }
+
+      // 验证图片数量
+      if (postData.images && postData.images.length > 4) {
+        throw new Error('图片数量不能超过4张');
+      }
+
+      // 设置默认时间戳
+      const timestamp = postData.timestamp || new Date().toISOString();
+
+      const postId = await postRepository.create({
+        ...postData,
+        timestamp
+      });
+
+      // 返回创建的动态详情
+      const post = await postRepository.findById(postId, postData.userId);
+      return post;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 更新动态
+  async updatePost(id, updateData, userId) {
+    try {
+      // 验证权限
+      const existingPost = await postRepository.findById(id, userId);
+      if (!existingPost) {
+        throw new Error('动态不存在');
+      }
+
+      if (!existingPost.canEdit) {
+        throw new Error('没有编辑权限');
+      }
+
+      // 验证图片数量
+      if (updateData.images && updateData.images.length > 4) {
+        throw new Error('图片数量不能超过4张');
+      }
+
+      const success = await postRepository.update(id, updateData);
+      if (!success) {
+        throw new Error('更新失败');
+      }
+
+      // 返回更新后的动态详情
+      const updatedPost = await postRepository.findById(id, userId);
+      return updatedPost;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取动态详情
+  async getPostById(id, currentUserId = null) {
+    try {
+      const post = await postRepository.findById(id, currentUserId);
+      if (!post) {
+        throw new Error('动态不存在');
+      }
+      return post;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取动态列表
+  async getPosts(options = {}) {
+    try {
+      const posts = await postRepository.findAll(options);
+      return posts;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 删除动态
+  async deletePost(id, userId) {
+    try {
+      // 验证权限
+      const existingPost = await postRepository.findById(id, userId);
+      if (!existingPost) {
+        throw new Error('动态不存在');
+      }
+
+      if (!existingPost.canDelete) {
+        throw new Error('没有删除权限');
+      }
+
+      const success = await postRepository.delete(id, userId);
+      if (!success) {
+        throw new Error('删除失败');
+      }
+
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 点赞/取消点赞
+  async toggleLike(postId, userId, like) {
+    try {
+      // 验证动态是否存在
+      const post = await postRepository.findById(postId);
+      if (!post) {
+        throw new Error('动态不存在');
+      }
+
+      const result = await postRepository.toggleLike(postId, userId, like);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 收藏/取消收藏
+  async toggleCollect(postId, userId, collect) {
+    try {
+      // 验证动态是否存在
+      const post = await postRepository.findById(postId);
+      if (!post) {
+        throw new Error('动态不存在');
+      }
+
+      const result = await postRepository.toggleCollect(postId, userId, collect);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 添加评论
+  async addComment(postId, userId, content) {
+    try {
+      // 验证动态是否存在
+      const post = await postRepository.findById(postId);
+      if (!post) {
+        throw new Error('动态不存在');
+      }
+
+      // 验证评论内容
+      if (!content || content.trim().length === 0) {
+        throw new Error('评论内容不能为空');
+      }
+
+      if (content.length > 500) {
+        throw new Error('评论内容不能超过500字');
+      }
+
+      const comment = await postRepository.addComment(postId, userId, content.trim());
+      return comment;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 删除评论
+  async deleteComment(commentId, userId) {
+    try {
+      const success = await postRepository.deleteComment(commentId, userId);
+      if (!success) {
+        throw new Error('删除评论失败或没有权限');
+      }
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取标签列表
+  async getTags() {
+    try {
+      const tags = await postRepository.getTags();
+      return tags;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取推荐动态
+  async getRecommendPosts(userId, limit = 10) {
+    try {
+      // 这里可以实现推荐算法，暂时返回最新动态
+      const posts = await postRepository.findAll({
+        page: 1,
+        pageSize: limit,
+        sort: 'latest',
+        currentUserId: userId
+      });
+      return posts.list;
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
+module.exports = new PostService(); 
