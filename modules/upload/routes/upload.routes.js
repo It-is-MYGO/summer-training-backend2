@@ -41,11 +41,37 @@ const upload = multer({
 });
 
 // 头像上传接口
-router.post('/avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+router.post('/avatar', authMiddleware, (req, res, next) => {
+  upload.single('avatar')(req, res, (err) => {
+    if (err) {
+      console.error('Multer错误:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: '文件大小超过限制（最大5MB）' });
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ message: '文件字段名不正确' });
+      }
+      return res.status(400).json({ message: '文件上传错误: ' + err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log('开始处理头像上传请求');
+    console.log('用户ID:', req.user.id);
+    console.log('文件信息:', req.file);
+    
     if (!req.file) {
+      console.log('没有接收到文件');
       return res.status(400).json({ message: '请选择要上传的头像文件' });
     }
+
+    console.log('文件上传成功:', {
+      originalname: req.file.originalname,
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
 
     // 生成文件访问URL
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
@@ -55,15 +81,17 @@ router.post('/avatar', authMiddleware, upload.single('avatar'), async (req, res)
     const success = await userRepository.updateAvatar(req.user.id, avatarUrl);
     
     if (success) {
+      console.log('头像信息更新成功');
       res.json({ 
         message: '头像上传成功',
         avatarUrl: avatarUrl
       });
     } else {
+      console.log('头像信息更新失败');
       res.status(500).json({ message: '头像信息更新失败' });
     }
   } catch (error) {
-    console.error('头像上传失败:', error);
+    console.error('头像上传处理失败:', error);
     res.status(500).json({ message: '头像上传失败: ' + error.message });
   }
 });

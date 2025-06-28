@@ -31,7 +31,7 @@ class AuthService {
     console.log('返回给前端的用户对象:', userResponse);
     return {
       user: userResponse,
-      token: jwt.sign({ id: user.id }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN })
+      token: jwt.sign({ id: user.id, username: user.username }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN })
     };
   }
 
