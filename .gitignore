@@ -3,6 +3,7 @@
 *.package-lock.json
 *package-lock.json
 *package.json
+*database.js
 
 # 日志
 logs/

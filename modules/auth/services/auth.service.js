@@ -13,6 +13,7 @@ class AuthService {
   async login(username, password) {
     const user = await userRepository.findByUsername(username);
     console.log('数据库查到的密码:', user && user.password, '前端传来的密码:', password);
+    console.log('数据库查到的完整用户对象:', user);
     if (!user) {
       const error = new Error('用户不存在');
       error.code = 'USER_NOT_FOUND';
@@ -26,8 +27,10 @@ class AuthService {
       error.isBusinessError = true;
       throw error;
     }
+    const userResponse = { id: user.id, username: user.username, email: user.email, isadmin: user.isadmin };
+    console.log('返回给前端的用户对象:', userResponse);
     return {
-      user: { id: user.id, username: user.username, isadmin: user.isadmin },
+      user: userResponse,
       token: jwt.sign({ id: user.id }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN })
     };
   }
@@ -37,9 +40,6 @@ class AuthService {
   }
 
   async updateProfile(userId, updateData) {
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
     return await userRepository.updateById(userId, updateData);
   }
 }

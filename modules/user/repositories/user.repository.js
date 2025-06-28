@@ -24,6 +24,42 @@ class UserRepository {
     const [rows] = await pool.query(sql, [username]);
     return rows[0] || null;
   }
+
+  async findById(id) {
+    const sql = 'SELECT * FROM users WHERE id = ?';
+    const [rows] = await pool.query(sql, [id]);
+    return rows[0] || null;
+  }
+
+  async updateById(id, updateData) {
+    try {
+      const fields = [];
+      const values = [];
+      
+      if (updateData.email !== undefined) {
+        fields.push('email = ?');
+        values.push(updateData.email);
+      }
+      
+      if (updateData.password !== undefined) {
+        fields.push('password = ?');
+        values.push(updateData.password); // 使用明文密码
+      }
+      
+      if (fields.length === 0) {
+        return false;
+      }
+      
+      values.push(id);
+      const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+      const [result] = await pool.query(sql, values);
+      
+      return result.affectedRows > 0;
+    } catch (err) {
+      console.error('更新用户信息时出错:', err);
+      throw err;
+    }
+  }
 }
 
 module.exports = new UserRepository();
