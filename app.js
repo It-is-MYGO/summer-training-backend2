@@ -19,19 +19,31 @@ app.use((req, res, next) => {
 // 中间件
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 2. 添加根路由
+// 根路径测试
 app.get('/', (req, res) => {
-  res.json({
-    status: 'running',
-    message: 'Welcome to the API',
-    endpoints: [
-      { path: '/hello', method: 'GET', description: 'Test endpoint' },
-      { path: '/api/auth', method: 'POST', description: 'Authentication' }
-    ]
+  res.json({ 
+    message: '商品比价系统后端服务启动成功！',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      posts: '/api/posts',
+      upload: '/api/upload'
+      // products: '/api/products',
+      // favorites: '/api/favorites'
+    }
   });
 });
-app.use(express.urlencoded({ extended: true }));
+
+// API测试路由
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'API测试成功',
+    timestamp: new Date().toISOString(),
+    status: 'ok'
+  });
+});
 
 // 静态文件服务 - 用于访问上传的图片
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -42,19 +54,6 @@ app.use('/api/posts', postRoutes);
 app.use('/api/upload', uploadRoutes);
 // app.use('/api/products', productRoutes);
 // app.use('/api/favorites', favoriteRoutes);
-
-// 根路径测试
-app.get('/', (req, res) => {
-  res.json({ 
-    message: '商品比价系统后端服务启动成功！',
-    version: '1.0.0',
-    endpoints: {
-      auth: '/api/auth',
-      // products: '/api/products',
-      // favorites: '/api/favorites'
-    }
-  });
-});
 
 // 错误处理（必须放在最后）
 app.use(errorHandler);

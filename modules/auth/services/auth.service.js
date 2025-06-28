@@ -27,7 +27,7 @@ class AuthService {
       error.isBusinessError = true;
       throw error;
     }
-    const userResponse = { id: user.id, username: user.username, email: user.email, isadmin: user.isadmin };
+    const userResponse = { id: user.id, username: user.username, email: user.email, isadmin: user.isadmin, avatar: user.avatar };
     console.log('返回给前端的用户对象:', userResponse);
     return {
       user: userResponse,

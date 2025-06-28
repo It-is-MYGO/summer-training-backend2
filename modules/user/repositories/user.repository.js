@@ -60,6 +60,18 @@ class UserRepository {
       throw err;
     }
   }
+
+  async updateAvatar(id, avatarUrl) {
+    try {
+      const sql = 'UPDATE users SET avatar = ? WHERE id = ?';
+      const [result] = await pool.query(sql, [avatarUrl, id]);
+      
+      return result.affectedRows > 0;
+    } catch (err) {
+      console.error('更新用户头像时出错:', err);
+      throw err;
+    }
+  }
 }
 
 module.exports = new UserRepository();
