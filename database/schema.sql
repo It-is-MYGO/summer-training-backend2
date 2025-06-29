@@ -72,4 +72,56 @@ CREATE TABLE IF NOT EXISTS users (
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_username (username),
   INDEX idx_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表'; 
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- 商品表
+CREATE TABLE IF NOT EXISTS products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL COMMENT '商品标题',
+  `desc` TEXT COMMENT '商品描述',
+  img VARCHAR(500) COMMENT '商品图片URL',
+  current_price DECIMAL(10,2) DEFAULT 0.00 COMMENT '当前价格',
+  original_price DECIMAL(10,2) DEFAULT 0.00 COMMENT '原价',
+  is_hot TINYINT(1) DEFAULT 0 COMMENT '是否热门商品',
+  is_drop TINYINT(1) DEFAULT 0 COMMENT '是否降价商品',
+  category VARCHAR(100) COMMENT '商品分类',
+  brand VARCHAR(100) COMMENT '品牌',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_title (title),
+  INDEX idx_is_hot (is_hot),
+  INDEX idx_is_drop (is_drop),
+  INDEX idx_category (category),
+  INDEX idx_brand (brand)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品表';
+
+-- 商品价格表
+CREATE TABLE IF NOT EXISTS product_prices (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  product_id INT NOT NULL COMMENT '商品ID',
+  platform VARCHAR(50) NOT NULL COMMENT '平台名称',
+  price DECIMAL(10,2) NOT NULL COMMENT '价格',
+  date DATE NOT NULL COMMENT '价格日期',
+  url VARCHAR(500) COMMENT '商品链接',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_product_platform_date (product_id, platform, date),
+  INDEX idx_product_id (product_id),
+  INDEX idx_platform (platform),
+  INDEX idx_date (date),
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品价格表';
+
+-- 收藏表
+CREATE TABLE IF NOT EXISTS favorites (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL COMMENT '用户ID',
+  product_id INT NOT NULL COMMENT '商品ID',
+  alert_price DECIMAL(10,2) DEFAULT NULL COMMENT '提醒价格',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_user_product (user_id, product_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_product_id (product_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收藏表'; 

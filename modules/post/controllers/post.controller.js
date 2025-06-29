@@ -4,7 +4,12 @@ class PostController {
   // 创建动态
   async createPost(req, res) {
     try {
+<<<<<<< Updated upstream
       const { content, images, userId, timestamp, tags, location, visibility, product } = req.body;
+=======
+      const { content, images, timestamp, tags, location, visibility, product } = req.body;
+      const userId = req.user.id;
+>>>>>>> Stashed changes
 
       const postData = {
         content,

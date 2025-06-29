@@ -23,6 +23,12 @@ router.put('/:id', postController.updatePost);
 
 // DELETE /api/posts/:id - 删除动态
 router.delete('/:id', postController.deletePost);
+<<<<<<< Updated upstream
+=======
+
+// DELETE /api/posts/user/:userId/all - 删除用户所有动态
+router.delete('/user/:userId/all', postController.deleteAllUserPosts);
+>>>>>>> Stashed changes
 
 // POST /api/posts/:id/like - 点赞/取消点赞
 router.post('/:id/like', postController.toggleLike);
@@ -32,6 +38,15 @@ router.post('/:id/collect', postController.toggleCollect);
 
 // POST /api/posts/:id/comments - 添加评论
 router.post('/:id/comments', postController.addComment);
+<<<<<<< Updated upstream
+=======
+
+// GET /api/posts/:id/comments - 获取动态评论列表
+router.get('/:id/comments', postController.getComments);
+
+// GET /api/posts/collections/user/:userId - 获取用户收藏的动态列表
+router.get('/collections/user/:userId', postController.getUserCollections);
+>>>>>>> Stashed changes
 
 // DELETE /api/posts/:postId/comments/:commentId - 删除评论
 router.delete('/:postId/comments/:commentId', postController.deleteComment);

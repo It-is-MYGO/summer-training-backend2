@@ -4,8 +4,8 @@ const path = require('path');
 const authRoutes = require('./modules/auth/routes/auth.routes');
 const postRoutes = require('./modules/post/routes/post.routes');
 const uploadRoutes = require('./modules/upload/routes/upload.routes');
-// const productRoutes = require('./modules/product/routes/productRoutes');
-// const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
+const productRoutes = require('./modules/product/routes/productRoutes');
+const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
 const errorHandler = require('./lib/middleware/errorHandler');
 
 const app = express();
@@ -41,9 +41,9 @@ app.get('/', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       posts: '/api/posts',
-      upload: '/api/upload'
-      // products: '/api/products',
-      // favorites: '/api/favorites'
+      upload: '/api/upload',
+      products: '/api/products',
+      favorites: '/api/favorites'
     }
   });
 });
@@ -64,8 +64,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/upload', uploadRoutes);
-// app.use('/api/products', productRoutes);
-// app.use('/api/favorites', favoriteRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/favorites', favoriteRoutes);
+
+// 404处理 - 确保返回JSON格式
+app.use('*', (req, res) => {
+  res.status(404).json({
+    code: 'NOT_FOUND',
+    message: `路由 ${req.method} ${req.originalUrl} 不存在`,
+    data: null
+  });
+});
 
 // 错误处理（必须放在最后）
 app.use(errorHandler);
