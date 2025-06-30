@@ -6,6 +6,7 @@ const postRoutes = require('./modules/post/routes/post.routes');
 const uploadRoutes = require('./modules/upload/routes/upload.routes');
 const productRoutes = require('./modules/product/routes/productRoutes');
 const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
+const userRoutes = require('./modules/user/routes/user.routes');
 const errorHandler = require('./lib/middleware/errorHandler');
 
 const app = express();
@@ -43,7 +44,8 @@ app.get('/', (req, res) => {
       posts: '/api/posts',
       upload: '/api/upload',
       products: '/api/products',
-      favorites: '/api/favorites'
+      favorites: '/api/favorites',
+      users: '/api/users'
     }
   });
 });
@@ -66,6 +68,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/users', userRoutes);
 
 // 404处理 - 确保返回JSON格式
 app.use('*', (req, res) => {

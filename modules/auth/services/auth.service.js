@@ -20,6 +20,13 @@ class AuthService {
       error.isBusinessError = true;
       throw error;
     }
+    // 增加封禁状态判断
+    if (user.status === 'banned') {
+      const error = new Error('该账号已被封禁，无法登录');
+      error.code = 'USER_BANNED';
+      error.isBusinessError = true;
+      throw error;
+    }
     // 明文密码直接比较
     if (user.password !== password) {
       const error = new Error('密码错误');

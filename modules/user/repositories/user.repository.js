@@ -72,6 +72,36 @@ class UserRepository {
       throw err;
     }
   }
+
+  async getAllUsers() {
+    const sql = 'SELECT id, username, email, isadmin, avatar, status FROM users';
+    const [rows] = await pool.query(sql);
+    return rows;
+  }
+
+  async updateUserAdminStatus(id, { isadmin, status }) {
+    const fields = [];
+    const values = [];
+    if (isadmin !== undefined) {
+      fields.push('isadmin = ?');
+      values.push(isadmin);
+    }
+    if (status !== undefined) {
+      fields.push('status = ?');
+      values.push(status);
+    }
+    if (fields.length === 0) return false;
+    values.push(id);
+    const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+    const [result] = await pool.query(sql, values);
+    return result.affectedRows > 0;
+  }
+
+  async deleteUser(id) {
+    const sql = 'DELETE FROM users WHERE id = ?';
+    const [result] = await pool.query(sql, [id]);
+    return result.affectedRows > 0;
+  }
 }
 
 module.exports = new UserRepository();
