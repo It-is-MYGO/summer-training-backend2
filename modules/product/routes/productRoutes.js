@@ -22,8 +22,6 @@ router.get('/:id/price-history', productController.getPriceHistory);
 router.get('/:id/platform-prices', productController.getPlatformPrices);
 
 // 图表数据（支持基础版和增强版）
-// 基础版：GET /api/products/:id/chart-data
-// 增强版：GET /api/products/:id/chart-data?enhanced=true
 router.get('/:id/chart-data', productController.getChartData);
 
 // 价格预测
@@ -31,5 +29,20 @@ router.get('/:id/price-prediction', productController.getPricePrediction);
 
 // 获取全部商品或分页商品
 router.get('/', productController.getAllProducts);
+
+// 修改商品状态（上架/下架）
+router.patch('/:id/status', productController.updateStatus);
+
+// 删除商品
+router.delete('/:id', productController.deleteProduct);
+
+// 添加商品
+router.post('/', productController.createProduct);
+
+// 编辑商品
+router.put('/:id', productController.updateProduct);
+
+// 添加商品价格
+router.post('/product-prices', productController.addProductPrice);
 
 module.exports = router;

@@ -1,6 +1,5 @@
 // 收藏相关业务逻辑（MySQL）
 const favoriteRepository = require('../repositories/favoriteRepository');
-const userRepository = require('../../user/repositories/user.repository');
 
 module.exports = {
   async getFavorites(userId) {
@@ -12,8 +11,6 @@ module.exports = {
     if (result.duplicate) {
       return { duplicate: true, id: result.id };
     }
-    // 新增：收藏商品成功后增加活跃度
-    await userRepository.increaseActivity(userId);
     return result;
   },
 

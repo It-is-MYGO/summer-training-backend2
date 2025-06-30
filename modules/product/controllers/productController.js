@@ -68,10 +68,25 @@ module.exports = {
 
   async getAllProducts(req, res) {
     try {
-      const products = await productService.getAllProducts();
-      res.json(products);
+      const page = parseInt(req.query.page) || 1;
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const { rows, total } = await productService.getAllProductsPaged(page, pageSize);
+      res.json({
+        code: 0,
+        message: '获取成功',
+        data: {
+          list: rows,
+          total,
+          page,
+          pageSize
+        }
+      });
     } catch (error) {
-      res.status(500).json({ message: '获取全部商品失败', error: error.message });
+      res.status(500).json({ 
+        code: 1,
+        message: '获取全部商品失败', 
+        error: error.message 
+      });
     }
   },
 
@@ -99,6 +114,67 @@ module.exports = {
       res.json(prediction);
     } catch (error) {
       res.status(500).json({ message: '获取价格预测失败', error: error.message });
+    }
+  },
+
+  async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      if (typeof status === 'undefined') {
+        return res.status(400).json({ code: 1, message: '缺少status参数' });
+      }
+      await productService.updateStatus(id, status);
+      res.json({ code: 0, message: '状态更新成功' });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '状态更新失败', error: error.message });
+    }
+  },
+
+  async deleteProduct(req, res) {
+    try {
+      const { id } = req.params;
+      await productService.deleteProduct(id);
+      res.json({ code: 0, message: '商品已删除' });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '删除失败', error: error.message });
+    }
+  },
+
+  async createProduct(req, res) {
+    try {
+      const product = req.body;
+      if (!product.title) {
+        return res.status(400).json({ code: 1, message: '商品标题不能为空' });
+      }
+      const result = await productService.createProduct(product);
+      res.json({ code: 0, message: '商品添加成功', data: result });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '添加商品失败', error: error.message });
+    }
+  },
+
+  async updateProduct(req, res) {
+    try {
+      const { id } = req.params;
+      const product = req.body;
+      await productService.updateProduct(id, product);
+      res.json({ code: 0, message: '商品信息已更新' });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '更新商品失败', error: error.message });
+    }
+  },
+
+  async addProductPrice(req, res) {
+    try {
+      const { product_id, platform, price } = req.body;
+      if (!product_id || !platform || !price) {
+        return res.status(400).json({ code: 1, message: '缺少参数' });
+      }
+      await productService.addProductPrice({ product_id, platform, price });
+      res.json({ code: 0, message: '价格已添加' });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '添加价格失败', error: error.message });
     }
   }
 };

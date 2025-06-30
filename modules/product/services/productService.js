@@ -133,5 +133,33 @@ module.exports = {
       console.error('获取价格预测失败:', error);
       return { prediction: '预测失败' };
     }
+  },
+
+  async getAllProducts() {
+    return await productRepository.findAllWithFavoriteCount();
+  },
+
+  async getAllProductsPaged(page = 1, pageSize = 10) {
+    return await productRepository.findAllWithFavoriteCountPaged(page, pageSize);
+  },
+
+  async updateStatus(id, status) {
+    return await productRepository.updateStatus(id, status);
+  },
+
+  async deleteProduct(id) {
+    return await productRepository.deleteProduct(id);
+  },
+
+  async createProduct(product) {
+    return await productRepository.createProduct(product);
+  },
+
+  async updateProduct(id, product) {
+    return await productRepository.updateProduct(id, product);
+  },
+
+  async addProductPrice(data) {
+    return await productRepository.addProductPrice(data);
   }
 };
