@@ -108,6 +108,37 @@ class PostService {
     }
   }
 
+  // 删除用户所有动态
+  async deleteAllUserPosts(targetUserId, currentUserId) {
+    try {
+      // 验证权限：只能删除自己的动态或管理员可以删除任何人的动态
+      if (targetUserId !== currentUserId) {
+        // 检查当前用户是否为管理员
+        const isAdmin = await this.checkUserIsAdmin(currentUserId);
+        if (!isAdmin) {
+          throw new Error('没有删除权限');
+        }
+      }
+
+      const deletedCount = await postRepository.deleteAllUserPosts(targetUserId, currentUserId);
+      return { success: true, deletedCount };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 检查用户是否为管理员
+  async checkUserIsAdmin(userId) {
+    try {
+      const { pool } = require('../../../lib/database/connection');
+      const query = 'SELECT isadmin FROM users WHERE id = ?';
+      const [rows] = await pool.execute(query, [userId]);
+      return rows.length > 0 && rows[0].isadmin === 1;
+    } catch (error) {
+      return false;
+    }
+  }
+
   // 点赞/取消点赞
   async toggleLike(postId, userId, like) {
     try {
@@ -178,6 +209,39 @@ class PostService {
     }
   }
 
+  // 获取动态评论列表
+  async getComments(postId, options = {}) {
+    try {
+      // 验证动态是否存在
+      const post = await postRepository.findById(postId);
+      if (!post) {
+        throw new Error('动态不存在');
+      }
+
+      const comments = await postRepository.getComments(postId, options);
+      return comments;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取用户收藏的动态列表
+  async getUserCollections(options = {}) {
+    try {
+      const { userId } = options;
+      
+      // 验证用户ID
+      if (!userId || isNaN(userId)) {
+        throw new Error('用户ID无效');
+      }
+
+      const collections = await postRepository.getUserCollections(options);
+      return collections;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // 获取标签列表
   async getTags() {
     try {
@@ -199,6 +263,40 @@ class PostService {
         currentUserId: userId
       });
       return posts.list;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // 获取用户个人动态
+  async getUserPosts(options = {}) {
+    try {
+      const {
+        page = 1,
+        pageSize = 10,
+        sort = 'latest',
+        targetUserId,
+        currentUserId = null
+      } = options;
+
+      // 验证目标用户ID
+      if (!targetUserId || isNaN(targetUserId)) {
+        throw new Error('用户ID无效');
+      }
+
+      // 检查权限：只能查看自己的动态或公开动态
+      const canViewPrivate = currentUserId && (currentUserId === targetUserId);
+
+      const posts = await postRepository.findUserPosts({
+        page,
+        pageSize,
+        sort,
+        targetUserId,
+        currentUserId,
+        canViewPrivate
+      });
+
+      return posts;
     } catch (error) {
       throw error;
     }
