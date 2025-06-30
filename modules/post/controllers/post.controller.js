@@ -102,10 +102,9 @@ class PostController {
   async getPostById(req, res) {
     try {
       const { id } = req.params;
-      const currentUserId = req.query.userId || req.body.userId || null;
-
+      // 用token解析的用户id
+      const currentUserId = req.user ? req.user.id : null;
       const post = await postService.getPostById(id, currentUserId);
-
       res.json({
         code: 0,
         message: '获取成功',
@@ -129,8 +128,10 @@ class PostController {
         keyword = '',
         tag = '',
         sort = 'latest',
-        userId = null
       } = req.query;
+
+      // 用token解析的用户id
+      const currentUserId = req.user ? req.user.id : null;
 
       const options = {
         page: parseInt(page),
@@ -138,7 +139,7 @@ class PostController {
         keyword,
         tag,
         sort,
-        currentUserId: userId
+        currentUserId
       };
 
       const result = await postService.getPosts(options);

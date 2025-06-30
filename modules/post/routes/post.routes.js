@@ -5,7 +5,7 @@ const auth = require('../../../lib/middleware/auth');
 
 // 动态相关路由
 // GET /api/posts - 获取动态列表
-router.get('/', postController.getPosts);
+router.get('/', auth, postController.getPosts);
 
 // GET /api/posts/recommend - 获取推荐动态
 router.get('/recommend', postController.getRecommendPosts);
@@ -17,7 +17,7 @@ router.get('/tags', postController.getTags);
 router.get('/user/:userId', postController.getUserPosts);
 
 // GET /api/posts/:id - 获取动态详情
-router.get('/:id', postController.getPostById);
+router.get('/:id', auth, postController.getPostById);
 
 // POST /api/posts - 创建动态
 router.post('/', auth, postController.createPost);
