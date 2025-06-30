@@ -102,6 +102,27 @@ class UserRepository {
     const [result] = await pool.query(sql, [id]);
     return result.affectedRows > 0;
   }
+
+  async increaseActivity(userId) {
+    const sql = 'UPDATE users SET activity = activity + 1 WHERE id = ?';
+    const [result] = await pool.query(sql, [userId]);
+    return result.affectedRows > 0;
+  }
+
+  async getActivityDistribution() {
+    // 活跃度分布区间可根据实际需求调整
+    // 例：高活跃(>100)、中等(51-100)、低(11-50)、新用户(<=10)
+    const sql = `
+      SELECT
+        SUM(CASE WHEN activity > 100 THEN 1 ELSE 0 END) AS high,
+        SUM(CASE WHEN activity BETWEEN 51 AND 100 THEN 1 ELSE 0 END) AS medium,
+        SUM(CASE WHEN activity BETWEEN 11 AND 50 THEN 1 ELSE 0 END) AS low,
+        SUM(CASE WHEN activity <= 10 THEN 1 ELSE 0 END) AS new_user
+      FROM users
+    `;
+    const [rows] = await pool.query(sql);
+    return rows[0];
+  }
 }
 
 module.exports = new UserRepository();

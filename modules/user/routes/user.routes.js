@@ -8,5 +8,7 @@ router.get('/', userController.getAllUsers);
 router.put('/:id', userController.updateUser);
 // 删除用户
 router.delete('/:id', userController.deleteUser);
+// 获取用户活跃度分布
+router.get('/activity-distribution', userController.getActivityDistribution);
 
 module.exports = router; 

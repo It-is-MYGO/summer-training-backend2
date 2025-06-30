@@ -33,4 +33,21 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: '删除失败' });
   }
+};
+
+// 获取用户活跃度分布
+exports.getActivityDistribution = async (req, res) => {
+  try {
+    const dist = await userRepository.getActivityDistribution();
+    res.json({
+      data: [
+        { name: '高活跃用户', value: dist.high },
+        { name: '中等活跃用户', value: dist.medium },
+        { name: '低活跃用户', value: dist.low },
+        { name: '新用户', value: dist.new_user }
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ message: '获取活跃度分布失败', error: err.message });
+  }
 }; 
