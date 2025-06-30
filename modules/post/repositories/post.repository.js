@@ -424,7 +424,7 @@ class PostRepository {
         (p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canDelete,
         pc.createdAt as collectedAt
       FROM post_collections pc
-      LEFT JOIN posts p ON pc.postId = p.id
+      INNER JOIN posts p ON pc.postId = p.id
       LEFT JOIN users u ON p.userId = u.id
       WHERE pc.userId = ?
       ${orderClause}
