@@ -4,8 +4,23 @@ class PostController {
   // 创建动态
   async createPost(req, res) {
     try {
+      console.log('创建动态请求体:', req.body);
+      console.log('当前用户:', req.user);
+      
       const { content, images, timestamp, tags, location, visibility, product } = req.body;
       const userId = req.user.id;
+      
+      console.log('解析后的数据:', {
+        content,
+        images,
+        userId,
+        timestamp,
+        tags,
+        location,
+        visibility,
+        product
+      });
+      
       const postData = {
         content,
         images: images || [],
@@ -16,6 +31,9 @@ class PostController {
         visibility: visibility || 'public',
         product: product || null
       };
+      
+      console.log('准备创建动态数据:', postData);
+      
       const post = await postService.createPost(postData);
       res.json({
         code: 0,
@@ -23,6 +41,7 @@ class PostController {
         data: post.toJSON()
       });
     } catch (error) {
+      console.error('创建动态失败:', error.message);
       res.status(400).json({
         code: 1,
         message: error.message,
@@ -168,6 +187,14 @@ class PostController {
     try {
       const { userId } = req.params;
       const currentUserId = req.user.id;
+      
+      console.log('删除用户所有动态请求:', {
+        targetUserId: userId,
+        currentUserId: currentUserId,
+        params: req.params,
+        user: req.user
+      });
+      
       const result = await postService.deleteAllUserPosts(parseInt(userId), currentUserId);
       res.json({
         code: 0,
@@ -177,6 +204,7 @@ class PostController {
         }
       });
     } catch (error) {
+      console.error('删除用户所有动态失败:', error.message);
       res.status(400).json({
         code: 1,
         message: error.message,

@@ -1,7 +1,7 @@
 module.exports = {
   host: 'localhost',
   user: 'root',
-  password: '123456',
+  password: 'Whu123456',
   database: 'pricecompare',
   waitForConnections: true,
   connectionLimit: 10,

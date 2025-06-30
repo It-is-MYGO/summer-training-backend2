@@ -68,10 +68,13 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   avatar VARCHAR(255) DEFAULT NULL,
   role ENUM('user', 'admin') DEFAULT 'user',
+  isadmin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否为管理员',
+  status ENUM('active', 'banned') DEFAULT 'active' COMMENT '用户状态',
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_username (username),
-  INDEX idx_email (email)
+  INDEX idx_email (email),
+  INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 商品表
