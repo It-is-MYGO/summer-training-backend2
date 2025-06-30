@@ -104,6 +104,7 @@ class PostController {
       const { id } = req.params;
       // 用token解析的用户id
       const currentUserId = req.user ? req.user.id : null;
+      console.log('[getPostById] req.user:', req.user, 'currentUserId:', currentUserId);
       const post = await postService.getPostById(id, currentUserId);
       res.json({
         code: 0,
@@ -132,6 +133,7 @@ class PostController {
 
       // 用token解析的用户id
       const currentUserId = req.user ? req.user.id : null;
+      console.log('[getPosts] req.user:', req.user, 'currentUserId:', currentUserId);
 
       const options = {
         page: parseInt(page),
