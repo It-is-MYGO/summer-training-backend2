@@ -38,11 +38,11 @@ module.exports = {
       const { id } = req.params;
       const product = await productService.getProductDetail(id);
       if (!product) {
-        return res.status(404).json({ message: '商品不存在' });
+        return res.status(404).json({ code: 1, message: '商品不存在' });
       }
-      res.json(product);
+      res.json({ code: 0, message: '获取成功', data: product });
     } catch (error) {
-      res.status(500).json({ message: '获取商品详情失败', error: error.message });
+      res.status(500).json({ code: 1, message: '获取商品详情失败', error: error.message });
     }
   },
 
