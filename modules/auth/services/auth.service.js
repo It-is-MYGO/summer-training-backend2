@@ -43,19 +43,7 @@ class AuthService {
   }
 
   async getProfile(userId) {
-    const user = await userRepository.findById(userId);
-    if (!user) {
-      return null;
-    }
-    // 返回完整的用户信息，但不包含密码
-    return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      isadmin: user.isadmin,
-      avatar: user.avatar,
-      status: user.status
-    };
+    return await userRepository.findById(userId);
   }
 
   async updateProfile(userId, updateData) {

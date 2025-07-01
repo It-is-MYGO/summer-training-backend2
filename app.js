@@ -69,6 +69,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin/posts', postRoutes);
 
 // 404处理 - 确保返回JSON格式
 app.use('*', (req, res) => {

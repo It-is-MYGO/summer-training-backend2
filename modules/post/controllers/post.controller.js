@@ -222,40 +222,26 @@ class PostController {
       const { id } = req.params;
       const { like } = req.body;
       const userId = req.user.id;
-      
-      // 验证postId参数
+      // 调试：输出收到的参数
+      console.log('[toggleLike] 收到参数:', { id, like, userId });
+      // 参数校验
       if (!id || id === 'undefined') {
-        return res.status(400).json({
-          code: 1,
-          message: '动态ID不能为空',
-          data: null
-        });
+        return res.status(400).json({ code: 1, message: '动态ID不能为空', data: null });
       }
-      
-      // 验证like参数
       if (like === undefined) {
-        return res.status(400).json({
-          code: 1,
-          message: '点赞参数不能为空',
-          data: null
-        });
+        return res.status(400).json({ code: 1, message: '点赞参数不能为空', data: null });
       }
-      
-      // 确保like是布尔值
+      // 转为布尔值
       const likeValue = Boolean(like);
-      
+      // 调用服务层
       const result = await postService.toggleLike(id, userId, likeValue);
-      res.json({
-        code: 0,
-        message: 'success',
-        data: result
-      });
+      // 调试：输出service返回结果
+      console.log('[toggleLike] service结果:', result);
+      res.json({ code: 0, message: 'success', data: result });
     } catch (error) {
-      res.status(400).json({
-        code: 1,
-        message: error.message,
-        data: null
-      });
+      // 调试：输出异常
+      console.error('[toggleLike] 异常:', error);
+      res.status(400).json({ code: 1, message: error.message, data: null });
     }
   }
 
