@@ -35,6 +35,7 @@ ORDER BY f.id DESC
     `, [userId, userId]);
     return rows.map(row => ({
       id: row.id,
+      productId: row.product_id,
       title: row.title,
       price: row.price,
       priceChange: parseFloat(row.price_change) || 0,
@@ -82,6 +83,18 @@ ORDER BY f.id DESC
     const [rows] = await pool.query(
       'SELECT id FROM favorites WHERE user_id = ? AND product_id = ?',
       [userId, productId]
+    );
+    if (rows.length > 0) {
+      return { exists: true, id: rows[0].id };
+    } else {
+      return { exists: false };
+    }
+  },
+
+  async checkFavoriteById(userId, favoriteId) {
+    const [rows] = await pool.query(
+      'SELECT id FROM favorites WHERE user_id = ? AND id = ?',
+      [userId, favoriteId]
     );
     if (rows.length > 0) {
       return { exists: true, id: rows[0].id };

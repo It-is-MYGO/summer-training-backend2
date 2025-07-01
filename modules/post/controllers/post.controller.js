@@ -4,8 +4,23 @@ class PostController {
   // 创建动态
   async createPost(req, res) {
     try {
+      console.log('创建动态请求体:', req.body);
+      console.log('当前用户:', req.user);
+      
       const { content, images, timestamp, tags, location, visibility, product } = req.body;
       const userId = req.user.id;
+      
+      console.log('解析后的数据:', {
+        content,
+        images,
+        userId,
+        timestamp,
+        tags,
+        location,
+        visibility,
+        product
+      });
+      
       const postData = {
         content,
         images: images || [],
@@ -16,6 +31,9 @@ class PostController {
         visibility: visibility || 'public',
         product: product || null
       };
+      
+      console.log('准备创建动态数据:', postData);
+      
       const post = await postService.createPost(postData);
       res.json({
         code: 0,
@@ -23,6 +41,7 @@ class PostController {
         data: post.toJSON()
       });
     } catch (error) {
+      console.error('创建动态失败:', error.message);
       res.status(400).json({
         code: 1,
         message: error.message,
@@ -83,10 +102,10 @@ class PostController {
   async getPostById(req, res) {
     try {
       const { id } = req.params;
-      const currentUserId = req.query.userId || req.body.userId || null;
-
+      // 用token解析的用户id
+      const currentUserId = req.user ? req.user.id : null;
+      console.log('[getPostById] req.user:', req.user, 'currentUserId:', currentUserId);
       const post = await postService.getPostById(id, currentUserId);
-
       res.json({
         code: 0,
         message: '获取成功',
@@ -110,8 +129,11 @@ class PostController {
         keyword = '',
         tag = '',
         sort = 'latest',
-        userId = null
       } = req.query;
+
+      // 用token解析的用户id
+      const currentUserId = req.user ? req.user.id : null;
+      console.log('[getPosts] req.user:', req.user, 'currentUserId:', currentUserId);
 
       const options = {
         page: parseInt(page),
@@ -119,7 +141,7 @@ class PostController {
         keyword,
         tag,
         sort,
-        currentUserId: userId
+        currentUserId
       };
 
       const result = await postService.getPosts(options);
@@ -168,6 +190,14 @@ class PostController {
     try {
       const { userId } = req.params;
       const currentUserId = req.user.id;
+      
+      console.log('删除用户所有动态请求:', {
+        targetUserId: userId,
+        currentUserId: currentUserId,
+        params: req.params,
+        user: req.user
+      });
+      
       const result = await postService.deleteAllUserPosts(parseInt(userId), currentUserId);
       res.json({
         code: 0,
@@ -177,6 +207,7 @@ class PostController {
         }
       });
     } catch (error) {
+      console.error('删除用户所有动态失败:', error.message);
       res.status(400).json({
         code: 1,
         message: error.message,
@@ -191,40 +222,26 @@ class PostController {
       const { id } = req.params;
       const { like } = req.body;
       const userId = req.user.id;
-      
-      // 验证postId参数
+      // 调试：输出收到的参数
+      console.log('[toggleLike] 收到参数:', { id, like, userId });
+      // 参数校验
       if (!id || id === 'undefined') {
-        return res.status(400).json({
-          code: 1,
-          message: '动态ID不能为空',
-          data: null
-        });
+        return res.status(400).json({ code: 1, message: '动态ID不能为空', data: null });
       }
-      
-      // 验证like参数
       if (like === undefined) {
-        return res.status(400).json({
-          code: 1,
-          message: '点赞参数不能为空',
-          data: null
-        });
+        return res.status(400).json({ code: 1, message: '点赞参数不能为空', data: null });
       }
-      
-      // 确保like是布尔值
+      // 转为布尔值
       const likeValue = Boolean(like);
-      
+      // 调用服务层
       const result = await postService.toggleLike(id, userId, likeValue);
-      res.json({
-        code: 0,
-        message: 'success',
-        data: result
-      });
+      // 调试：输出service返回结果
+      console.log('[toggleLike] service结果:', result);
+      res.json({ code: 0, message: 'success', data: result });
     } catch (error) {
-      res.status(400).json({
-        code: 1,
-        message: error.message,
-        data: null
-      });
+      // 调试：输出异常
+      console.error('[toggleLike] 异常:', error);
+      res.status(400).json({ code: 1, message: error.message, data: null });
     }
   }
 

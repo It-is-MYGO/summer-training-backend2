@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图表测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        canvas {
+            max-width: 100%;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>图表测试页面</h1>
+        
+        <div class="debug-info" id="debugInfo">
+            正在加载数据...
+        </div>
+        
+        <div class="chart-container">
+            <h3>价格历史趋势</h3>
+            <canvas id="priceHistoryChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="chart-container">
+            <h3>多平台价格对比</h3>
+            <canvas id="comparisonChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const debugInfo = document.getElementById('debugInfo');
+        
+        function log(message) {
+            console.log(message);
+            debugInfo.innerHTML += '<br>' + message;
+        }
+        
+        async function testCharts() {
+            try {
+                log('开始测试图表...');
+                
+                // 检查Chart.js是否加载
+                if (!window.Chart) {
+                    log('错误: Chart.js未加载');
+                    return;
+                }
+                log('✅ Chart.js已加载');
+                
+                // 获取数据
+                log('正在获取价格历史数据...');
+                const historyRes = await fetch('/api/products/1/price-history');
+                const historyData = await historyRes.json();
+                log(`✅ 获取到 ${historyData.length} 条价格历史数据`);
+                
+                log('正在获取图表数据...');
+                const chartRes = await fetch('/api/products/1/chart-data');
+                const chartData = await chartRes.json();
+                log(`✅ 获取到图表数据，包含 ${Object.keys(chartData.platformData || {}).length} 个平台`);
+                
+                // 绘制价格历史图表
+                if (historyData.length > 0) {
+                    log('正在绘制价格历史图表...');
+                    const ctx1 = document.getElementById('priceHistoryChart').getContext('2d');
+                    
+                    const labels = historyData.map(item => item.date);
+                    const data = historyData.map(item => item.price);
+                    
+                    log(`图表数据: ${labels.length} 个标签, ${data.length} 个数据点`);
+                    log(`标签示例: ${labels.slice(0, 3).join(', ')}`);
+                    log(`数据示例: ${data.slice(0, 3).join(', ')}`);
+                    
+                    new Chart(ctx1, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '价格走势 (元)',
+                                data: data,
+                                borderColor: '#4361ee',
+                                backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                                borderWidth: 3,
+                                tension: 0.3,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { 
+                                    beginAtZero: false, 
+                                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                                    ticks: { color: '#333' }
+                                },
+                                x: { 
+                                    grid: { display: false },
+                                    ticks: { color: '#333' }
+                                }
+                            }
+                        }
+                    });
+                    log('✅ 价格历史图表绘制完成');
+                }
+                
+                // 绘制多平台对比图表
+                if (chartData.platformData && Object.keys(chartData.platformData).length > 0) {
+                    log('正在绘制多平台对比图表...');
+                    const ctx2 = document.getElementById('comparisonChart').getContext('2d');
+                    
+                    const platforms = Object.keys(chartData.platformData);
+                    const firstPlatform = platforms[0];
+                    const labels = chartData.platformData[firstPlatform].map(item => item.date);
+                    
+                    const datasets = platforms.map(platform => ({
+                        label: platform,
+                        data: chartData.platformData[platform].map(item => item.price),
+                        borderWidth: 3,
+                        tension: 0.3
+                    }));
+                    
+                    log(`多平台数据: ${platforms.length} 个平台, ${labels.length} 个时间点`);
+                    
+                    new Chart(ctx2, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: datasets
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { position: 'top' } },
+                            scales: {
+                                y: { 
+                                    beginAtZero: false, 
+                                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                                    ticks: { color: '#333' }
+                                },
+                                x: { 
+                                    grid: { display: false },
+                                    ticks: { color: '#333' }
+                                }
+                            }
+                        }
+                    });
+                    log('✅ 多平台对比图表绘制完成');
+                }
+                
+                log('🎉 所有图表测试完成！');
+                
+            } catch (error) {
+                log(`❌ 错误: ${error.message}`);
+                console.error('测试失败:', error);
+            }
+        }
+        
+        // 页面加载完成后开始测试
+        window.addEventListener('load', testCharts);
+    </script>
+</body>
+</html> 

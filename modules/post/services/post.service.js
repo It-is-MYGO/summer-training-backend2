@@ -1,4 +1,5 @@
 const postRepository = require('../repositories/post.repository');
+const userRepository = require('../../user/repositories/user.repository');
 
 class PostService {
   // 创建动态
@@ -21,6 +22,9 @@ class PostService {
         ...postData,
         timestamp
       });
+
+      // 新增：动态发布成功后增加活跃度
+      await userRepository.increaseActivity(postData.userId);
 
       // 返回创建的动态详情
       const post = await postRepository.findById(postId, postData.userId);
@@ -149,6 +153,10 @@ class PostService {
       }
 
       const result = await postRepository.toggleLike(postId, userId, like);
+      // 修正：只要like为true就增加活跃度
+      if (like) {
+        await userRepository.increaseActivity(userId);
+      }
       return result;
     } catch (error) {
       throw error;
@@ -165,6 +173,10 @@ class PostService {
       }
 
       const result = await postRepository.toggleCollect(postId, userId, collect);
+      // 修正：只要collect为true就增加活跃度
+      if (collect) {
+        await userRepository.increaseActivity(userId);
+      }
       return result;
     } catch (error) {
       throw error;
@@ -190,6 +202,8 @@ class PostService {
       }
 
       const comment = await postRepository.addComment(postId, userId, content.trim());
+      // 新增：评论成功后增加活跃度
+      await userRepository.increaseActivity(userId);
       return comment;
     } catch (error) {
       throw error;

@@ -133,5 +133,50 @@ module.exports = {
       console.error('获取价格预测失败:', error);
       return { prediction: '预测失败' };
     }
+  },
+
+  async getAllProducts() {
+    return await productRepository.findAllWithFavoriteCount();
+  },
+
+  async getAllProductsPaged(page = 1, pageSize = 10) {
+    return await productRepository.findAllWithFavoriteCountPaged(page, pageSize);
+  },
+
+  async updateStatus(id, status) {
+    return await productRepository.updateStatus(id, status);
+  },
+
+  async deleteProduct(id) {
+    return await productRepository.deleteProduct(id);
+  },
+
+  async createProduct(product) {
+    return await productRepository.createProduct(product);
+  },
+
+  async updateProduct(id, product) {
+    return await productRepository.updateProduct(id, product);
+  },
+
+  async addProductPrice(data) {
+    return await productRepository.addProductPrice(data);
+  },
+
+  async getBrands() {
+    return await productRepository.getBrands();
+  },
+
+  async getProductsByBrand(brandId, page = 1, pageSize = 10) {
+    return await productRepository.getProductsByBrand(brandId, page, pageSize);
+  },
+
+  async findOrCreateBrandByName(name) {
+    let brand = await productRepository.findBrandByName(name);
+    if (!brand) {
+      const id = await productRepository.createBrand(name);
+      brand = { id, name };
+    }
+    return [brand];
   }
 };

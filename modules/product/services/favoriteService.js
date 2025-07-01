@@ -22,7 +22,13 @@ module.exports = {
     return await favoriteRepository.updateAlertPrice(id, alertPrice);
   },
 
-  async checkFavorite(userId, productId) {
-    return await favoriteRepository.checkFavorite(userId, productId);
+  async checkFavorite(userId, productId, favoriteId = null) {
+    if (favoriteId) {
+      // 通过收藏ID检查
+      return await favoriteRepository.checkFavoriteById(userId, favoriteId);
+    } else {
+      // 通过商品ID检查
+      return await favoriteRepository.checkFavorite(userId, productId);
+    }
   }
 }; 

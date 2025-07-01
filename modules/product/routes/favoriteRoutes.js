@@ -11,8 +11,9 @@ router.post('/', favoriteController.addFavorite);
 // 移除收藏
 router.delete('/:id', favoriteController.removeFavorite);
 
-// 设置提醒价格
-router.put('/:id/alert-price', favoriteController.setAlertPrice);
+// 设置提醒价格 - 提供多个版本
+router.put('/:id/alert-price', favoriteController.setAlertPriceNoAuth); // 标准版本
+router.put('/:id/alert', favoriteController.setAlertPriceNoAuth); // 兼容前端版本
 
 // 判断是否已收藏
 router.get('/check', favoriteController.checkFavorite);
