@@ -161,5 +161,22 @@ module.exports = {
 
   async addProductPrice(data) {
     return await productRepository.addProductPrice(data);
+  },
+
+  async getBrands() {
+    return await productRepository.getBrands();
+  },
+
+  async getProductsByBrand(brandId, page = 1, pageSize = 10) {
+    return await productRepository.getProductsByBrand(brandId, page, pageSize);
+  },
+
+  async findOrCreateBrandByName(name) {
+    let brand = await productRepository.findBrandByName(name);
+    if (!brand) {
+      const id = await productRepository.createBrand(name);
+      brand = { id, name };
+    }
+    return [brand];
   }
 };

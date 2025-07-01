@@ -9,6 +9,10 @@ router.get('/hot', productController.getHotProducts);
 // 降价商品
 router.get('/drops', productController.getDropProducts);
 
+// 品牌相关API
+router.get('/brands', productController.getBrands);
+router.get('/brands/:brandId', productController.getProductsByBrand);
+
 // 搜索商品
 router.get('/search', productController.search);
 
