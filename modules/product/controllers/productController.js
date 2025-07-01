@@ -176,6 +176,37 @@ module.exports = {
     } catch (error) {
       res.status(500).json({ code: 1, message: '添加价格失败', error: error.message });
     }
+  },
+
+  async getBrands(req, res) {
+    try {
+      const brands = await productService.getBrands();
+      res.json({ code: 0, message: '获取成功', data: brands });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '获取品牌列表失败', error: error.message });
+    }
+  },
+
+  async getProductsByBrand(req, res) {
+    try {
+      const { brandName } = req.params;
+      const page = parseInt(req.query.page) || 1;
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const { rows, total } = await productService.getProductsByBrand(brandName, page, pageSize);
+      res.json({
+        code: 0,
+        message: '获取成功',
+        data: {
+          list: rows,
+          total,
+          page,
+          pageSize,
+          brandName
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ code: 1, message: '获取品牌商品失败', error: error.message });
+    }
   }
 };
 

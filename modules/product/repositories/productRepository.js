@@ -87,5 +87,55 @@ module.exports = {
       [product_id, platform, price, date]
     );
     return result;
+  },
+
+  async getBrands() {
+    const [rows] = await pool.query(`
+      SELECT DISTINCT brand, COUNT(*) as product_count 
+      FROM products 
+      WHERE brand IS NOT NULL AND brand != '' AND status = 1
+      GROUP BY brand 
+      ORDER BY product_count DESC
+    `);
+    return rows;
+  },
+
+  async getProductsByBrand(brandName, page = 1, pageSize = 10) {
+    const offset = (page - 1) * pageSize;
+    
+    // 获取总数
+    const [countResult] = await pool.query(
+      'SELECT COUNT(*) as total FROM products WHERE brand = ? AND status = 1',
+      [brandName]
+    );
+    const total = countResult[0].total;
+    
+    // 获取分页数据
+    const [rows] = await pool.query(`
+      SELECT p.*, 
+             COALESCE(f.favorite_count, 0) as favorite_count,
+             COALESCE(pp.price, 0) as current_price,
+             COALESCE(pp.platform, '') as platform
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) as favorite_count 
+        FROM favorites 
+        GROUP BY product_id
+      ) f ON p.id = f.product_id
+      LEFT JOIN (
+        SELECT product_id, price, platform
+        FROM product_prices 
+        WHERE date = (
+          SELECT MAX(date) 
+          FROM product_prices 
+          WHERE product_id = product_prices.product_id
+        )
+      ) pp ON p.id = pp.product_id
+      WHERE p.brand = ? AND p.status = 1
+      ORDER BY p.id DESC
+      LIMIT ? OFFSET ?
+    `, [brandName, pageSize, offset]);
+    
+    return { rows, total };
   }
 };

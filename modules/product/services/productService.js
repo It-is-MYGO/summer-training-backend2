@@ -161,5 +161,13 @@ module.exports = {
 
   async addProductPrice(data) {
     return await productRepository.addProductPrice(data);
+  },
+
+  async getBrands() {
+    return await productRepository.getBrands();
+  },
+
+  async getProductsByBrand(brandName, page = 1, pageSize = 10) {
+    return await productRepository.getProductsByBrand(brandName, page, pageSize);
   }
 };
