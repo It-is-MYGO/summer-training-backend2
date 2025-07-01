@@ -6,6 +6,6 @@ router.get('/', brandController.list);
 router.get('/:id', brandController.get);
 router.post('/', brandController.create);
 router.put('/:id', brandController.update);
-router.delete('/:id', brandController.remove);
+router.delete('/:id', brandController.deleteBrand);
 
 module.exports = router;

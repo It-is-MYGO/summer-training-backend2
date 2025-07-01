@@ -147,5 +147,13 @@ module.exports = {
   async createBrand(name) {
     const [result] = await pool.query('INSERT INTO brands (name) VALUES (?)', [name]);
     return result.insertId;
+  },
+
+  async setProductsStatusByBrand(brandId, status) {
+    const [result] = await pool.query(
+      'UPDATE products SET status = ? WHERE brand_id = ?',
+      [status, brandId]
+    );
+    return result;
   }
 };

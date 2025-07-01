@@ -21,9 +21,14 @@ const update = async (req, res) => {
   res.json({ message: 'Updated' });
 };
 
-const remove = async (req, res) => {
-  await brandService.removeBrand(req.params.id);
-  res.json({ message: 'Deleted' });
+const deleteBrand = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await brandService.deleteBrand(id);
+    res.json({ code: 0, message: '品牌已删除，相关商品已下架' });
+  } catch (error) {
+    res.status(500).json({ code: 1, message: '删除品牌失败', error: error.message });
+  }
 };
 
 module.exports = {
@@ -31,6 +36,6 @@ module.exports = {
   get,
   create,
   update,
-  remove
+  deleteBrand
 };
 

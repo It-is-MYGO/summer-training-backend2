@@ -26,10 +26,15 @@ const update = async (id, data) => {
   return { id, name, logo };
 };
 
+// 下架该品牌所有商品
+const unpublishProductsByBrandId = async (brandId) => {
+  await pool.query('UPDATE products SET status = 0 WHERE brand_id = ?', [brandId]);
+};
+
 // 删除品牌
-const remove = async (id) => {
-  await pool.query('DELETE FROM brands WHERE id = ?', [id]);
-  return;
+const deleteBrand = async (id) => {
+  const [result] = await pool.query('DELETE FROM brands WHERE id = ?', [id]);
+  return result;
 };
 
 module.exports = {
@@ -37,5 +42,6 @@ module.exports = {
   getById,
   create,
   update,
-  remove
+  unpublishProductsByBrandId,
+  deleteBrand
 };

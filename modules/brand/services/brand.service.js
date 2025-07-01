@@ -1,15 +1,14 @@
 const brandRepo = require('../repositories/brand.repository');
 
-const listBrands = () => brandRepo.getAll();
-const getBrand = (id) => brandRepo.getById(id);
-const addBrand = (data) => brandRepo.create(data);
-const editBrand = (id, data) => brandRepo.update(id, data);
-const removeBrand = (id) => brandRepo.remove(id);
-
 module.exports = {
-  listBrands,
-  getBrand,
-  addBrand,
-  editBrand,
-  removeBrand
+  listBrands: () => brandRepo.getAll(),
+  getBrand: (id) => brandRepo.getById(id),
+  addBrand: (data) => brandRepo.create(data),
+  editBrand: (id, data) => brandRepo.update(id, data),
+  async deleteBrand(brandId) {
+    // 先下架所有商品
+    await brandRepo.unpublishProductsByBrandId(brandId);
+    // 再删除品牌
+    return await brandRepo.deleteBrand(brandId);
+  }
 };
