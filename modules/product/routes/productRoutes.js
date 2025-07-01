@@ -11,7 +11,7 @@ router.get('/drops', productController.getDropProducts);
 
 // 品牌相关API
 router.get('/brands', productController.getBrands);
-router.get('/brands/:brandName', productController.getProductsByBrand);
+router.get('/brands/:brandId', productController.getProductsByBrand);
 
 // 搜索商品
 router.get('/search', productController.search);

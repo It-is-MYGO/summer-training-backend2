@@ -157,8 +157,16 @@ module.exports = {
   async updateProduct(req, res) {
     try {
       const { id } = req.params;
-      const product = req.body;
-      await productService.updateProduct(id, product);
+      let { brand_id, new_brand_name, ...data } = req.body;
+
+      // 如果是新品牌
+      if (new_brand_name) {
+        // 查找或插入品牌
+        const [brand] = await productService.findOrCreateBrandByName(new_brand_name);
+        brand_id = brand.id;
+      }
+
+      await productService.updateProduct(id, { ...data, brand_id });
       res.json({ code: 0, message: '商品信息已更新' });
     } catch (error) {
       res.status(500).json({ code: 1, message: '更新商品失败', error: error.message });
@@ -178,6 +186,7 @@ module.exports = {
     }
   },
 
+  // 获取所有品牌及商品数
   async getBrands(req, res) {
     try {
       const brands = await productService.getBrands();
@@ -187,12 +196,13 @@ module.exports = {
     }
   },
 
+  // 获取某品牌下的商品
   async getProductsByBrand(req, res) {
     try {
-      const { brandName } = req.params;
+      const { brandId } = req.params;
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.pageSize) || 10;
-      const { rows, total } = await productService.getProductsByBrand(brandName, page, pageSize);
+      const { rows, total } = await productService.getProductsByBrand(brandId, page, pageSize);
       res.json({
         code: 0,
         message: '获取成功',
@@ -201,7 +211,7 @@ module.exports = {
           total,
           page,
           pageSize,
-          brandName
+          brandId
         }
       });
     } catch (error) {

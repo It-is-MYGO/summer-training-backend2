@@ -72,10 +72,10 @@ module.exports = {
   },
 
   async updateProduct(id, product) {
-    const { title, desc, img, category, brand, is_hot, is_drop } = product;
+    const { title, desc, img, category, brand_id, is_hot, is_drop } = product;
     const [result] = await pool.query(
-      'UPDATE products SET title=?, `desc`=?, img=?, category=?, brand=?, is_hot=?, is_drop=? WHERE id=?',
-      [title, desc, img, category, brand, is_hot, is_drop, id]
+      'UPDATE products SET title=?, `desc`=?, img=?, category=?, brand_id=?, is_hot=?, is_drop=? WHERE id=?',
+      [title, desc, img, category, brand_id, is_hot, is_drop, id]
     );
     return result;
   },
@@ -91,22 +91,22 @@ module.exports = {
 
   async getBrands() {
     const [rows] = await pool.query(`
-      SELECT DISTINCT brand, COUNT(*) as product_count 
-      FROM products 
-      WHERE brand IS NOT NULL AND brand != '' AND status = 1
-      GROUP BY brand 
+      SELECT b.id, b.name, b.logo, COUNT(p.id) as product_count
+      FROM brands b
+      LEFT JOIN products p ON p.brand_id = b.id AND p.status = 1
+      GROUP BY b.id, b.name, b.logo
       ORDER BY product_count DESC
     `);
     return rows;
   },
 
-  async getProductsByBrand(brandName, page = 1, pageSize = 10) {
+  async getProductsByBrand(brandId, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     
     // 获取总数
     const [countResult] = await pool.query(
-      'SELECT COUNT(*) as total FROM products WHERE brand = ? AND status = 1',
-      [brandName]
+      'SELECT COUNT(*) as total FROM products WHERE brand_id = ? AND status = 1',
+      [brandId]
     );
     const total = countResult[0].total;
     
@@ -131,11 +131,21 @@ module.exports = {
           WHERE product_id = product_prices.product_id
         )
       ) pp ON p.id = pp.product_id
-      WHERE p.brand = ? AND p.status = 1
+      WHERE p.brand_id = ? AND p.status = 1
       ORDER BY p.id DESC
       LIMIT ? OFFSET ?
-    `, [brandName, pageSize, offset]);
+    `, [brandId, pageSize, offset]);
     
     return { rows, total };
+  },
+
+  async findBrandByName(name) {
+    const [rows] = await pool.query('SELECT * FROM brands WHERE name = ?', [name]);
+    return rows[0];
+  },
+
+  async createBrand(name) {
+    const [result] = await pool.query('INSERT INTO brands (name) VALUES (?)', [name]);
+    return result.insertId;
   }
 };
