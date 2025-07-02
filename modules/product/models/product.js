@@ -79,13 +79,11 @@ class Product {
     const offset = (page - 1) * pageSize;
     // 查询总数
     const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM products');
-    // 查询分页数据，带最新价格和平台
+    // 查询分页数据，只查商品和收藏数，不 join 价格表
     const [rows] = await pool.query(`
       SELECT 
         p.*,
-        COALESCE(fav_count.favorite_count, 0) as favorite_count,
-        pp.platform,
-        pp.price
+        COALESCE(fav_count.favorite_count, 0) as favorite_count
       FROM products p
       LEFT JOIN (
         SELECT 
@@ -94,20 +92,6 @@ class Product {
         FROM favorites
         GROUP BY product_id
       ) fav_count ON p.id = fav_count.product_id
-      LEFT JOIN (
-        SELECT t1.product_id, t1.platform, t1.price
-        FROM product_prices t1
-        INNER JOIN (
-          SELECT product_id, MAX(date) as max_date
-          FROM product_prices
-          GROUP BY product_id
-        ) t2 ON t1.product_id = t2.product_id AND t1.date = t2.max_date
-        INNER JOIN (
-          SELECT product_id, date, MIN(price) as min_price
-          FROM product_prices
-          GROUP BY product_id, date
-        ) t3 ON t1.product_id = t3.product_id AND t1.date = t3.date AND t1.price = t3.min_price
-      ) pp ON p.id = pp.product_id
       ORDER BY p.id DESC
       LIMIT ? OFFSET ?
     `, [pageSize, offset]);
