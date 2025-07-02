@@ -413,7 +413,7 @@ class PostController {
       res.json({
         code: 0,
         message: 'success',
-        data: posts.map(post => post.toJSON())
+        data: posts.map(post => (typeof post.toJSON === 'function' ? post.toJSON() : post))
       });
     } catch (error) {
       res.status(400).json({

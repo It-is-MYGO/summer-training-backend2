@@ -1,5 +1,8 @@
 const postRepository = require('../repositories/post.repository');
 const userRepository = require('../../user/repositories/user.repository');
+const fs = require('fs');
+const path = require('path');
+const { pool } = require('../../../lib/database/connection');
 
 class PostService {
   // 创建动态
@@ -138,7 +141,6 @@ class PostService {
   // 检查用户是否为管理员
   async checkUserIsAdmin(userId) {
     try {
-      const { pool } = require('../../../lib/database/connection');
       const query = 'SELECT isadmin FROM users WHERE id = ?';
       const [rows] = await pool.execute(query, [userId]);
       return rows.length > 0 && rows[0].isadmin === 1;
@@ -273,14 +275,58 @@ class PostService {
   // 获取推荐动态
   async getRecommendPosts(userId, limit = 10) {
     try {
-      // 这里可以实现推荐算法，暂时返回最新动态
-      const posts = await postRepository.findAll({
-        page: 1,
-        pageSize: limit,
-        sort: 'latest',
-        currentUserId: userId
-      });
-      return posts.list;
+      // 判断用户是否有行为数据
+      const [rows] = await pool.query(
+        'SELECT COUNT(*) as cnt FROM (SELECT id FROM post_likes WHERE userId=? UNION SELECT id FROM post_collections WHERE userId=? UNION SELECT id FROM post_comments WHERE userId=?) t',
+        [userId, userId, userId]
+      );
+      if (rows[0].cnt === 0) {
+        // 新用户，返回热门动态
+        const hotSql = `WITH hot_posts AS (\n\
+          SELECT p.*,\n\
+                 (COALESCE(l.like_count,0)*2 + COALESCE(c.collect_count,0)*3 + COALESCE(cm.comment_count,0)*1) AS hot_score,\n\
+                 (SELECT COUNT(*) FROM post_likes WHERE postId = p.id) AS likes,\n\
+                 (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) AS comments,\n\
+                 (SELECT COUNT(*) FROM post_collections WHERE postId = p.id) AS collections\n\
+          FROM posts p\n\
+          LEFT JOIN (\n\
+            SELECT postId, COUNT(*) AS like_count\n\
+            FROM post_likes\n\
+            WHERE createdAt > DATE_SUB(NOW(), INTERVAL 30 DAY)\n\
+            GROUP BY postId\n\
+          ) l ON l.postId = p.id\n\
+          LEFT JOIN (\n\
+            SELECT postId, COUNT(*) AS collect_count\n\
+            FROM post_collections\n\
+            WHERE createdAt > DATE_SUB(NOW(), INTERVAL 30 DAY)\n\
+            GROUP BY postId\n\
+          ) c ON c.postId = p.id\n\
+          LEFT JOIN (\n\
+            SELECT postId, COUNT(*) AS comment_count\n\
+            FROM post_comments\n\
+            WHERE createdAt > DATE_SUB(NOW(), INTERVAL 30 DAY)\n\
+            GROUP BY postId\n\
+          ) cm ON cm.postId = p.id\n\
+          WHERE p.status = 'approved'\n\
+          ORDER BY hot_score DESC, p.createdAt DESC\n\
+        )\n\
+        SELECT * FROM hot_posts LIMIT ${limit};`;
+        const [hotRows] = await pool.query(hotSql);
+        return hotRows;
+      } else {
+        // 老用户，走协同过滤
+        const fs = require('fs');
+        const path = require('path');
+        const sql = fs.readFileSync(
+          path.join(__dirname, '../../../database/recommend_posts.sql'),
+          'utf8'
+        );
+        // 只取协同过滤部分，防止执行到冷启动SQL
+        const recommendSql = sql.split('-- 热门动态推荐')[0];
+        const finalSql = recommendSql.replace(/:userId/g, userId).replace(/LIMIT 10;/, `LIMIT ${limit};`);
+        const [rows] = await pool.query(finalSql);
+        return rows;
+      }
     } catch (error) {
       throw error;
     }
