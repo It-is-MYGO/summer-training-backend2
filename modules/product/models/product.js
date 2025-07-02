@@ -35,7 +35,7 @@ class Product {
   }
 
   static async findById(id) {
-    const [rows] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT * FROM products WHERE id = ? AND status = 1', [id]);
     return rows[0];
   }
 
