@@ -129,7 +129,8 @@ class PostController {
         keyword = '',
         tag = '',
         sort = 'latest',
-        all = false
+        all = false,
+        status = undefined
       } = req.query;
 
       // 用token解析的用户id
@@ -143,7 +144,8 @@ class PostController {
         tag,
         sort,
         currentUserId,
-        all: all === 'true' && isAdmin
+        all: all === 'true' && isAdmin,
+        status
       };
 
       // 日志输出

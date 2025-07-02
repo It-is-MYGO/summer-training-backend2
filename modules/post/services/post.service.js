@@ -81,9 +81,10 @@ class PostService {
   // 获取动态列表
   async getPosts(options = {}) {
     try {
-      // 普通用户和广场页始终只查已审核
-      if (!options.all) {
-        options.status = 'approved'; // 强制覆盖，防止被前端参数覆盖
+      console.log('[后端 service getPosts] options:', options);
+      // 只在status为undefined或null时赋值'approved'，其他情况一律不覆盖
+      if (options.status === undefined || options.status === null) {
+        options.status = 'approved';
       }
       const posts = await postRepository.findAll(options);
       return posts;

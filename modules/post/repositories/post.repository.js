@@ -101,6 +101,7 @@ class PostRepository {
 
   // 获取动态列表
   async findAll(options = {}) {
+    console.log('[后端 repository findAll] options:', options);
     const {
       page = 1,
       pageSize = 10,
@@ -108,7 +109,7 @@ class PostRepository {
       tag = '',
       sort = 'latest',
       currentUserId = null,
-      status = null,
+      status = undefined,
       all = false
     } = options;
 
@@ -121,7 +122,7 @@ class PostRepository {
       whereClause = 'WHERE 1=1';
     }
 
-    if (status && ['approved', 'pending', 'rejected'].includes(status)) {
+    if (status !== undefined && status !== null && status !== '' && ['approved', 'pending', 'rejected'].includes(status)) {
       whereClause += ' AND p.status = ?';
       whereParams.push(status);
     }
@@ -187,10 +188,10 @@ class PostRepository {
       ${orderClause}
       LIMIT ${pageSizeNum} OFFSET ${offsetNum}
     `;
+    console.log('[后端 repository findAll] 最终SQL:', query);
+    console.log('[后端 repository findAll] 最终参数:', finalParams);
     
     try {
-      console.log('最终SQL:', query);
-      console.log('最终参数:', finalParams);
       const [rows] = await pool.execute(query, finalParams);
       console.log('SQL查出rows:', rows);
       // 获取总数
