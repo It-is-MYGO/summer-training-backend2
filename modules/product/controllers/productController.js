@@ -182,6 +182,7 @@ module.exports = {
       await productService.addProductPrice({ product_id, platform, price });
       res.json({ code: 0, message: '价格已添加' });
     } catch (error) {
+      console.error('添加价格失败:', error, '请求体:', req.body);
       res.status(500).json({ code: 1, message: '添加价格失败', error: error.message });
     }
   },
