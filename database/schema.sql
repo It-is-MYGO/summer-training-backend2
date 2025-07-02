@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS posts (
   location VARCHAR(255) COMMENT '位置信息',
   visibility ENUM('public', 'private', 'friends') DEFAULT 'public' COMMENT '可见性设置',
   product JSON COMMENT '关联商品信息',
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending' COMMENT '审核状态',
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_userId (userId),

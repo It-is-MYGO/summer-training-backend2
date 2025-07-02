@@ -129,11 +129,12 @@ class PostController {
         keyword = '',
         tag = '',
         sort = 'latest',
+        all = false
       } = req.query;
 
       // 用token解析的用户id
       const currentUserId = req.user ? req.user.id : null;
-      console.log('[getPosts] req.user:', req.user, 'currentUserId:', currentUserId);
+      const isAdmin = req.user && req.user.isadmin === 1;
 
       const options = {
         page: parseInt(page),
@@ -141,10 +142,21 @@ class PostController {
         keyword,
         tag,
         sort,
-        currentUserId
+        currentUserId,
+        all: all === 'true' && isAdmin
       };
 
+      // 日志输出
+      console.log('[getPosts] isAdmin:', isAdmin, 'all param:', all, 'options.all:', options.all);
+      console.log('[getPosts] options:', options);
+
       const result = await postService.getPosts(options);
+
+      // 日志输出
+      console.log('[getPosts] 返回动态数量:', result.list.length, '总数:', result.total);
+      if (result.list.length > 0) {
+        console.log('[getPosts] 第一条动态:', result.list[0]);
+      }
 
       res.json({
         code: 0,
@@ -485,6 +497,27 @@ class PostController {
       });
     } catch (error) {
       res.status(400).json({
+        code: 1,
+        message: error.message,
+        data: null
+      });
+    }
+  }
+
+  // 新增：管理员审核动态
+  async updatePostStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const adminId = req.user.id;
+      const result = await postService.updatePostStatus(id, status, adminId);
+      res.json({
+        code: 0,
+        message: '审核成功',
+        data: result
+      });
+    } catch (error) {
+      res.status(403).json({
         code: 1,
         message: error.message,
         data: null

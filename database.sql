@@ -5,14 +5,18 @@
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS pricecompare DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE summer_training;
+USE pricecompare;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(50) UNIQUE NOT NULL,
+  username VARCHAR(50) NOT NULL,
   password VARCHAR(255) NOT NULL,
   email VARCHAR(100),
+  isadmin TINYINT(1) DEFAULT 0 COMMENT '是否管理员 1=管理员 0=普通用户',
+  avatar VARCHAR(255),
+  status ENUM('active','banned') DEFAULT 'active' COMMENT '用户状态',
+  activity INT DEFAULT 0 COMMENT '活跃度',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -26,6 +30,7 @@ CREATE TABLE IF NOT EXISTS products (
   category VARCHAR(100),
   is_hot BOOLEAN DEFAULT FALSE,
   is_drop BOOLEAN DEFAULT FALSE,
+  status TINYINT(1) DEFAULT 1 COMMENT '商品状态 1=上架 0=下架',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -63,7 +68,7 @@ INSERT INTO users (username, password, email) VALUES
 ('testuser', '123456', 'test@example.com');
 
 -- 插入测试商品
-INSERT INTO products (title, `desc`, img, category, is_hot, is_drop) VALUES 
+INSERT INTO products (title, `desc`, image, category, is_hot, is_drop) VALUES 
 ('某品牌旗舰手机 8GB+256GB 全网通', '型号：SM-X9000 | 颜色：曜夜黑', 'https://via.placeholder.com/400x400?text=商品大图', '手机', TRUE, FALSE),
 ('某品牌轻薄笔记本 i7高配 16GB内存', '高性能轻薄本，适合办公和游戏', 'https://via.placeholder.com/400x400?text=笔记本', '电脑', TRUE, FALSE),
 ('智能健康手表 多功能 续航强', '血氧检测，50米防水', 'https://via.placeholder.com/400x400?text=手表', '数码', TRUE, TRUE),

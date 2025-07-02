@@ -50,4 +50,7 @@ router.get('/collections/user/:userId', auth, postController.getUserCollections)
 // DELETE /api/posts/:postId/comments/:commentId - 删除评论
 router.delete('/:postId/comments/:commentId', auth, postController.deleteComment);
 
+// PATCH /api/posts/:id/status - 管理员审核动态
+router.patch('/:id/status', auth, postController.updatePostStatus);
+
 module.exports = router; 

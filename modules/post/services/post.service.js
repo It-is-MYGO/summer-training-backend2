@@ -81,6 +81,10 @@ class PostService {
   // 获取动态列表
   async getPosts(options = {}) {
     try {
+      // 普通用户和广场页始终只查已审核
+      if (!options.all) {
+        options.status = 'approved'; // 强制覆盖，防止被前端参数覆盖
+      }
       const posts = await postRepository.findAll(options);
       return posts;
     } catch (error) {
@@ -314,6 +318,24 @@ class PostService {
     } catch (error) {
       throw error;
     }
+  }
+
+  // 新增：管理员审核动态
+  async updatePostStatus(id, status, adminId) {
+    // 校验管理员权限
+    const isAdmin = await this.checkUserIsAdmin(adminId);
+    if (!isAdmin) {
+      throw new Error('没有审核权限');
+    }
+    // 只允许 approved/rejected
+    if (!['approved', 'rejected'].includes(status)) {
+      throw new Error('无效的审核状态');
+    }
+    const success = await postRepository.updateStatus(id, status);
+    if (!success) {
+      throw new Error('审核失败，动态不存在');
+    }
+    return { id, status };
   }
 }
 

@@ -58,6 +58,7 @@ class Post {
     this.location = data.location;
     this.visibility = data.visibility || 'public';
     this.collectedAt = data.collectedAt || null;
+    this.status = data.status;
   }
 
   static fromDatabase(row) {
@@ -84,7 +85,8 @@ class Post {
       tags: this.tags,
       location: this.location,
       visibility: this.visibility,
-      collectedAt: this.collectedAt
+      collectedAt: this.collectedAt,
+      status: this.status
     };
   }
 }

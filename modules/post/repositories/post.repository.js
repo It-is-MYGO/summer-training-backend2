@@ -7,8 +7,8 @@ class PostRepository {
     const { content, images, userId, timestamp, tags, location, visibility, product } = postData;
     
     const query = `
-      INSERT INTO posts (content, images, userId, time, tags, location, visibility, product, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      INSERT INTO posts (content, images, userId, time, tags, location, visibility, product, status, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
     
     const values = [
@@ -19,7 +19,8 @@ class PostRepository {
       JSON.stringify(tags || []),
       location ?? null,
       visibility ?? 'public',
-      product ? JSON.stringify(product) : null
+      product ? JSON.stringify(product) : null,
+      'pending'
     ];
 
     try {
@@ -106,11 +107,24 @@ class PostRepository {
       keyword = '',
       tag = '',
       sort = 'latest',
-      currentUserId = null
+      currentUserId = null,
+      status = null,
+      all = false
     } = options;
 
-    let whereClause = 'WHERE p.visibility = "public"';
+    let whereClause = '';
     let whereParams = [];
+
+    if (!all) {
+      whereClause = 'WHERE p.visibility = "public"';
+    } else {
+      whereClause = 'WHERE 1=1';
+    }
+
+    if (status && ['approved', 'pending', 'rejected'].includes(status)) {
+      whereClause += ' AND p.status = ?';
+      whereParams.push(status);
+    }
 
     if (keyword) {
       whereClause += ' AND (p.content LIKE ? OR u.username LIKE ?)';
@@ -162,7 +176,7 @@ class PostRepository {
 
     const pageSizeNum = Number(pageSize);
     const offsetNum = Number(offset);
-    const finalParams = [...whereParams, ...selectParams];
+    const finalParams = [...selectParams, ...whereParams];
 
     const query = `
       SELECT
@@ -175,7 +189,10 @@ class PostRepository {
     `;
     
     try {
+      console.log('最终SQL:', query);
+      console.log('最终参数:', finalParams);
       const [rows] = await pool.execute(query, finalParams);
+      console.log('SQL查出rows:', rows);
       // 获取总数
       const countQuery = `
         SELECT COUNT(*) as total
@@ -187,12 +204,12 @@ class PostRepository {
       const total = countRows[0].total;
 
       const posts = rows.map(row => {
-        row.isLiked = row.isLiked > 0;
-        row.isCollected = row.isCollected > 0;
-        row.canEdit = row.canEdit > 0;
-        row.canDelete = row.canDelete > 0;
-        return Post.fromDatabase(row);
+        console.log('单条row:', row);
+        const post = Post.fromDatabase(row);
+        console.log('Post.fromDatabase结果:', post);
+        return post;
       });
+      console.log('最终posts:', posts);
 
       return {
         list: posts,
@@ -584,17 +601,41 @@ class PostRepository {
       throw new Error(`获取用户动态失败: ${error.message}`);
     }
   }
+
+  // 新增：更新动态审核状态
+  async updateStatus(id, status) {
+    const query = 'UPDATE posts SET status = ?, updatedAt = NOW() WHERE id = ?';
+    try {
+      const [result] = await pool.execute(query, [status, id]);
+      return result.affectedRows > 0;
+    } catch (error) {
+      throw new Error(`更新动态审核状态失败: ${error.message}`);
+    }
+  }
 }
 
-// 工具函数：将ISO时间字符串转为MySQL DATETIME格式
+// 工具函数：将时间转为MySQL DATETIME格式（保持本地时区）
 function toMySQLDateTime(date) {
   if (!date) return null;
+  
+  let d;
   if (date instanceof Date) {
-    return date.toISOString().slice(0, 19).replace('T', ' ');
+    d = date;
+  } else {
+    d = new Date(date);
   }
-  const d = new Date(date);
-  if (isNaN(d)) return null;
-  return d.toISOString().slice(0, 19).replace('T', ' ');
+  
+  if (isNaN(d.getTime())) return null;
+  
+  // 使用本地时区格式化，而不是UTC
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 module.exports = new PostRepository(); 
