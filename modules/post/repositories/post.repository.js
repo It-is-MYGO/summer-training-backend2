@@ -68,6 +68,7 @@ class PostRepository {
         u.avatar as userAvatar,
         (SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes,
         (SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments,
+        (SELECT COUNT(*) FROM post_collections WHERE postId = p.id) as collections,
         ${currentUserId ? '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id AND userId = ?) as isLiked,' : '0 as isLiked,'}
         ${currentUserId ? '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id AND userId = ?) as isCollected,' : '0 as isCollected,'}
         ${currentUserId ? '(p.userId = ? OR EXISTS(SELECT 1 FROM users WHERE id = ? AND isadmin = 1)) as canEdit,' : '0 as canEdit,'}
@@ -108,7 +109,7 @@ class PostRepository {
       tag = '',
       sort = 'latest',
       currentUserId = null,
-      status = null,
+      status = undefined,
       all = false
     } = options;
 
@@ -121,7 +122,7 @@ class PostRepository {
       whereClause = 'WHERE 1=1';
     }
 
-    if (status && ['approved', 'pending', 'rejected'].includes(status)) {
+    if (status !== undefined && status !== null && status !== '' && ['approved', 'pending', 'rejected'].includes(status)) {
       whereClause += ' AND p.status = ?';
       whereParams.push(status);
     }
@@ -150,7 +151,8 @@ class PostRepository {
       'u.username',
       'u.avatar as userAvatar',
       '(SELECT COUNT(*) FROM post_likes WHERE postId = p.id) as likes',
-      '(SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments'
+      '(SELECT COUNT(*) FROM post_comments WHERE postId = p.id) as comments',
+      '(SELECT COUNT(*) FROM post_collections WHERE postId = p.id) as collections'
     ];
     let selectParams = [];
     if (currentUserId) {
@@ -189,10 +191,8 @@ class PostRepository {
     `;
     
     try {
-      console.log('最终SQL:', query);
-      console.log('最终参数:', finalParams);
       const [rows] = await pool.execute(query, finalParams);
-      console.log('SQL查出rows:', rows);
+      
       // 获取总数
       const countQuery = `
         SELECT COUNT(*) as total
@@ -204,12 +204,9 @@ class PostRepository {
       const total = countRows[0].total;
 
       const posts = rows.map(row => {
-        console.log('单条row:', row);
         const post = Post.fromDatabase(row);
-        console.log('Post.fromDatabase结果:', post);
         return post;
       });
-      console.log('最终posts:', posts);
 
       return {
         list: posts,
@@ -302,6 +299,11 @@ class PostRepository {
       await pool.execute(query, [postId, userId]);
     }
 
+    // 获取最新收藏数
+    const [collectionsRows] = await pool.execute(
+      'SELECT COUNT(*) as collections FROM post_collections WHERE postId = ?',
+      [postId]
+    );
     // 检查当前用户是否收藏
     const [rows] = await pool.execute(
       'SELECT COUNT(*) as isCollected FROM post_collections WHERE postId = ? AND userId = ?',
@@ -309,7 +311,8 @@ class PostRepository {
     );
 
     return {
-      isCollected: rows[0].isCollected > 0
+      isCollected: rows[0].isCollected > 0,
+      collections: collectionsRows[0].collections
     };
   }
 

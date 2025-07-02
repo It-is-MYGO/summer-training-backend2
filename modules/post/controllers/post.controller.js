@@ -4,22 +4,8 @@ class PostController {
   // 创建动态
   async createPost(req, res) {
     try {
-      console.log('创建动态请求体:', req.body);
-      console.log('当前用户:', req.user);
-      
       const { content, images, timestamp, tags, location, visibility, product } = req.body;
       const userId = req.user.id;
-      
-      console.log('解析后的数据:', {
-        content,
-        images,
-        userId,
-        timestamp,
-        tags,
-        location,
-        visibility,
-        product
-      });
       
       const postData = {
         content,
@@ -32,8 +18,6 @@ class PostController {
         product: product || null
       };
       
-      console.log('准备创建动态数据:', postData);
-      
       const post = await postService.createPost(postData);
       res.json({
         code: 0,
@@ -41,7 +25,6 @@ class PostController {
         data: post.toJSON()
       });
     } catch (error) {
-      console.error('创建动态失败:', error.message);
       res.status(400).json({
         code: 1,
         message: error.message,
@@ -104,7 +87,6 @@ class PostController {
       const { id } = req.params;
       // 用token解析的用户id
       const currentUserId = req.user ? req.user.id : null;
-      console.log('[getPostById] req.user:', req.user, 'currentUserId:', currentUserId);
       const post = await postService.getPostById(id, currentUserId);
       res.json({
         code: 0,
@@ -129,7 +111,8 @@ class PostController {
         keyword = '',
         tag = '',
         sort = 'latest',
-        all = false
+        all = false,
+        status = undefined
       } = req.query;
 
       // 用token解析的用户id
@@ -143,20 +126,11 @@ class PostController {
         tag,
         sort,
         currentUserId,
-        all: all === 'true' && isAdmin
+        all: all === 'true' && isAdmin,
+        status
       };
 
-      // 日志输出
-      console.log('[getPosts] isAdmin:', isAdmin, 'all param:', all, 'options.all:', options.all);
-      console.log('[getPosts] options:', options);
-
       const result = await postService.getPosts(options);
-
-      // 日志输出
-      console.log('[getPosts] 返回动态数量:', result.list.length, '总数:', result.total);
-      if (result.list.length > 0) {
-        console.log('[getPosts] 第一条动态:', result.list[0]);
-      }
 
       res.json({
         code: 0,
@@ -203,13 +177,6 @@ class PostController {
       const { userId } = req.params;
       const currentUserId = req.user.id;
       
-      console.log('删除用户所有动态请求:', {
-        targetUserId: userId,
-        currentUserId: currentUserId,
-        params: req.params,
-        user: req.user
-      });
-      
       const result = await postService.deleteAllUserPosts(parseInt(userId), currentUserId);
       res.json({
         code: 0,
@@ -219,7 +186,6 @@ class PostController {
         }
       });
     } catch (error) {
-      console.error('删除用户所有动态失败:', error.message);
       res.status(400).json({
         code: 1,
         message: error.message,
@@ -234,8 +200,6 @@ class PostController {
       const { id } = req.params;
       const { like } = req.body;
       const userId = req.user.id;
-      // 调试：输出收到的参数
-      console.log('[toggleLike] 收到参数:', { id, like, userId });
       // 参数校验
       if (!id || id === 'undefined') {
         return res.status(400).json({ code: 1, message: '动态ID不能为空', data: null });
@@ -247,12 +211,8 @@ class PostController {
       const likeValue = Boolean(like);
       // 调用服务层
       const result = await postService.toggleLike(id, userId, likeValue);
-      // 调试：输出service返回结果
-      console.log('[toggleLike] service结果:', result);
       res.json({ code: 0, message: 'success', data: result });
     } catch (error) {
-      // 调试：输出异常
-      console.error('[toggleLike] 异常:', error);
       res.status(400).json({ code: 1, message: error.message, data: null });
     }
   }

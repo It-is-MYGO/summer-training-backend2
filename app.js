@@ -9,6 +9,7 @@ const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
 const userRoutes = require('./modules/user/routes/user.routes');
 const brandRoutes = require('./modules/brand/routes/brand.routes');
 const errorHandler = require('./lib/middleware/errorHandler');
+const logRoutes = require('./modules/log/routes');
 
 
 const app = express();
@@ -73,6 +74,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin/posts', postRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api/log', logRoutes);
 
 
 // 404处理 - 确保返回JSON格式
