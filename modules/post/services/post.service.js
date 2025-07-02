@@ -81,7 +81,6 @@ class PostService {
   // 获取动态列表
   async getPosts(options = {}) {
     try {
-      console.log('[后端 service getPosts] options:', options);
       // 只在status为undefined或null时赋值'approved'，其他情况一律不覆盖
       if (options.status === undefined || options.status === null) {
         options.status = 'approved';
