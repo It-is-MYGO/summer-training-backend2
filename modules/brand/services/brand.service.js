@@ -1,7 +1,7 @@
 const brandRepo = require('../repositories/brand.repository');
 
 module.exports = {
-  listBrands: () => brandRepo.getAll(),
+  listBrands: (keyword = '') => brandRepo.getAllWithKeyword(keyword),
   getBrand: (id) => brandRepo.getById(id),
   addBrand: (data) => brandRepo.create(data),
   editBrand: (id, data) => brandRepo.update(id, data),

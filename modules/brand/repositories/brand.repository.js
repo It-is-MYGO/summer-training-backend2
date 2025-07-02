@@ -6,6 +6,13 @@ const getAll = async () => {
   return rows;
 };
 
+// 获取所有品牌（带关键词）
+const getAllWithKeyword = async (keyword = '') => {
+  if (!keyword) return getAll();
+  const [rows] = await pool.query('SELECT * FROM brands WHERE name LIKE ? ORDER BY id DESC', [`%${keyword}%`]);
+  return rows;
+};
+
 // 获取单个品牌
 const getById = async (id) => {
   const [rows] = await pool.query('SELECT * FROM brands WHERE id = ?', [id]);
@@ -39,6 +46,7 @@ const deleteBrand = async (id) => {
 
 module.exports = {
   getAll,
+  getAllWithKeyword,
   getById,
   create,
   update,
