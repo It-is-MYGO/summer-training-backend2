@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS favorites (
 CREATE TABLE IF NOT EXISTS user_logs (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
-  action ENUM('register', 'login', 'logout') NOT NULL,
+  action ENUM('register', 'login', 'logout','ban') NOT NULL,
   status ENUM('success', 'fail') DEFAULT 'success',
   ip VARCHAR(64),
   user_agent VARCHAR(255),

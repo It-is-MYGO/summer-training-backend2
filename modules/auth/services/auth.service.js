@@ -5,6 +5,14 @@ const { pool } = require('../../../lib/database/connection');
 
 class AuthService {
   async register(userData) {
+    // 检查邮箱是否已存在
+    const existEmailUser = await userRepository.findByEmail(userData.email);
+    if (existEmailUser) {
+      const error = new Error('邮箱已被注册');
+      error.code = 'EMAIL_EXISTS';
+      error.isBusinessError = true;
+      throw error;
+    }
     // 直接存储明文密码，isadmin 默认为 0
     const userId = await userRepository.createUser(userData.username, userData.password, userData.email, 0);
     return userId;
