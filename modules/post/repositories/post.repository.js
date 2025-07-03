@@ -148,8 +148,10 @@ class PostRepository {
     }
 
     let orderClause = 'ORDER BY p.createdAt DESC';
-    if (sort === 'popular') {
+    if (sort === 'likes') {
       orderClause = 'ORDER BY likes DESC, p.createdAt DESC';
+    } else if (sort === 'comments') {
+      orderClause = 'ORDER BY comments DESC, p.createdAt DESC';
     } else if (sort === 'oldest') {
       orderClause = 'ORDER BY p.createdAt ASC';
     }
