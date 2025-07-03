@@ -33,24 +33,34 @@ class PostRepository {
 
   // 更新动态
   async update(id, updateData) {
-    const { content, images, tags, location, visibility, product } = updateData;
-    
-    const query = `
-      UPDATE posts 
-      SET content = ?, images = ?, tags = ?, location = ?, visibility = ?, product = ?, updatedAt = NOW()
-      WHERE id = ?
-    `;
-    
-    const values = [
+    const { content, images, tags, location, visibility, product, status } = updateData;
+    let setFields = [
+      'content = ?',
+      'images = ?',
+      'tags = ?',
+      'location = ?',
+      'visibility = ?',
+      'product = ?',
+      'updatedAt = NOW()'
+    ];
+    let values = [
       content,
       JSON.stringify(images || []),
       JSON.stringify(tags || []),
       location || null,
       visibility || 'public',
-      product ? JSON.stringify(product) : null,
-      id
+      product ? JSON.stringify(product) : null
     ];
-
+    if (status) {
+      setFields.push('status = ?');
+      values.push(status);
+    }
+    values.push(id);
+    const query = `
+      UPDATE posts 
+      SET ${setFields.join(', ')}
+      WHERE id = ?
+    `;
     try {
       const [result] = await pool.execute(query, values);
       return result.affectedRows > 0;

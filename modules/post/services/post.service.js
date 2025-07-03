@@ -55,7 +55,8 @@ class PostService {
         throw new Error('图片数量不能超过4张');
       }
 
-      const success = await postRepository.update(id, updateData);
+      // 编辑后状态设为 pending，需审核
+      const success = await postRepository.update(id, { ...updateData, status: 'pending' });
       if (!success) {
         throw new Error('更新失败');
       }
