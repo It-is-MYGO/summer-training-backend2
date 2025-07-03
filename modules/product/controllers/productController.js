@@ -1,5 +1,6 @@
 // 处理商品相关的HTTP请求（Express）
 const productService = require('../services/productService');
+const { pool } = require('../../../lib/database/connection');
 
 module.exports = {
   async getHotProducts(req, res) {
@@ -69,24 +70,40 @@ module.exports = {
   async getAllProducts(req, res) {
     try {
       const page = parseInt(req.query.page) || 1;
-      const pageSize = parseInt(req.query.pageSize) || 10;
-      const { rows, total } = await productService.getAllProductsPaged(page, pageSize);
+      const pageSize = parseInt(req.query.pageSize) || 12;
+      const includeOffline = req.query.includeOffline === 'true';
+      const offset = (page - 1) * pageSize;
+
+      // 构建查询条件
+      const whereClause = includeOffline ? '' : 'WHERE p.status = 1';
+      const countWhereClause = includeOffline ? '' : 'WHERE status = 1';
+
+      // 查询总数
+      const [countRows] = await pool.query(`SELECT COUNT(*) as count FROM products ${countWhereClause}`);
+      const total = countRows[0].count;
+
+      // 查询分页数据
+      const [rows] = await pool.query(
+        `SELECT p.*, 
+                (SELECT MIN(pp.price) FROM product_prices pp WHERE pp.product_id = p.id) as price,
+                (SELECT JSON_ARRAYAGG(pp.platform) FROM product_prices pp WHERE pp.product_id = p.id) as platforms
+         FROM products p
+         ${whereClause}
+         ORDER BY p.id DESC
+         LIMIT ? OFFSET ?`,
+        [pageSize, offset]
+      );
+
       res.json({
         code: 0,
-        message: '获取成功',
         data: {
-          list: rows,
-          total,
-          page,
-          pageSize
+          products: rows,
+          total
         }
       });
-    } catch (error) {
-      res.status(500).json({ 
-        code: 1,
-        message: '获取全部商品失败', 
-        error: error.message 
-      });
+    } catch (err) {
+      console.error('getAllProducts error:', err);
+      res.status(500).json({ code: 1, message: '获取全部商品失败', error: err.message, stack: err.stack });
     }
   },
 
@@ -182,6 +199,7 @@ module.exports = {
       await productService.addProductPrice({ product_id, platform, price });
       res.json({ code: 0, message: '价格已添加' });
     } catch (error) {
+      console.error('添加价格失败:', error, '请求体:', req.body);
       res.status(500).json({ code: 1, message: '添加价格失败', error: error.message });
     }
   },

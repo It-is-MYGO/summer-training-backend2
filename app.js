@@ -10,6 +10,7 @@ const userRoutes = require('./modules/user/routes/user.routes');
 const brandRoutes = require('./modules/brand/routes/brand.routes');
 const errorHandler = require('./lib/middleware/errorHandler');
 const logRoutes = require('./modules/log/routes');
+const recommendRoutes = require('./modules/recommend/routes/recommend.routes');
 
 
 const app = express();
@@ -48,7 +49,8 @@ app.get('/', (req, res) => {
       upload: '/api/upload',
       products: '/api/products',
       favorites: '/api/favorites',
-      users: '/api/users'
+      users: '/api/users',
+      recommend: '/api/recommend'
     }
   });
 });
@@ -75,6 +77,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin/posts', postRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/log', logRoutes);
+app.use('/api/recommend', recommendRoutes);
 
 
 // 404处理 - 确保返回JSON格式

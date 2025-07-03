@@ -1,7 +1,8 @@
 const brandService = require('../services/brand.service');
 
 const list = async (req, res) => {
-  const brands = await brandService.listBrands();
+  const keyword = req.query.keyword || '';
+  const brands = await brandService.listBrands(keyword);
   res.json(brands);
 };
 

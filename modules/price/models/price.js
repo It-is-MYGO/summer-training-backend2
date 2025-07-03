@@ -44,16 +44,49 @@ class ProductPrice {
   }
 
   static async findPlatformPrices(productId) {
-    // 获取各平台最新价格
+    // 返回所有平台的最新价格，没有数据的平台也返回一行
     const [rows] = await pool.query(`
-      SELECT p1.* FROM product_prices p1
-      INNER JOIN (
-        SELECT platform, MAX(date) as max_date
-        FROM product_prices 
-        WHERE product_id = ?
-        GROUP BY platform
-      ) p2 ON p1.platform = p2.platform AND p1.date = p2.max_date
-      WHERE p1.product_id = ?
+      SELECT
+        p.platform,
+        q.id,
+        q.product_id,
+        q.price,
+        q.date,
+        q.url,
+        q.created_at
+      FROM
+        (SELECT '京东' AS platform
+         UNION SELECT '天猫'
+         UNION SELECT '拼多多'
+         UNION SELECT '苏宁') p
+      LEFT JOIN (
+        SELECT p1.*
+        FROM product_prices p1
+        INNER JOIN (
+          SELECT
+            platform,
+            MAX(created_at) as max_created_at
+          FROM product_prices
+          WHERE product_id = ?
+          GROUP BY platform
+        ) p2 ON p1.platform = p2.platform AND p1.created_at = p2.max_created_at
+        WHERE p1.product_id = ?
+          AND p1.price = (
+            SELECT MIN(price)
+            FROM product_prices
+            WHERE product_id = p1.product_id
+              AND platform = p1.platform
+              AND created_at = p1.created_at
+          )
+          AND p1.id = (
+            SELECT MIN(id)
+            FROM product_prices
+            WHERE product_id = p1.product_id
+              AND platform = p1.platform
+              AND created_at = p1.created_at
+              AND price = p1.price
+          )
+      ) q ON p.platform = q.platform
     `, [productId, productId]);
     return rows;
   }
