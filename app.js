@@ -9,7 +9,7 @@ const favoriteRoutes = require('./modules/product/routes/favoriteRoutes');
 const userRoutes = require('./modules/user/routes/user.routes');
 const brandRoutes = require('./modules/brand/routes/brand.routes');
 const errorHandler = require('./lib/middleware/errorHandler');
-const logRoutes = require('./modules/log/routes');
+const logRoutes = require('./modules/log/routes/log.routes');
 const recommendRoutes = require('./modules/recommend/routes/recommend.routes');
 
 

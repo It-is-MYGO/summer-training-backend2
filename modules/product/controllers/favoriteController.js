@@ -7,6 +7,7 @@ module.exports = {
       const favorites = await favoriteService.getFavorites(userId);
       res.json(favorites);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: '获取收藏列表失败', error: error.message });
     }
   },
@@ -34,6 +35,7 @@ module.exports = {
         message: '添加收藏成功' 
       });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: '添加收藏失败', error: error.message });
     }
   },
@@ -49,6 +51,7 @@ module.exports = {
       
       res.json({ message: '移除收藏成功' });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: '移除收藏失败', error: error.message });
     }
   },
@@ -78,6 +81,7 @@ module.exports = {
       
       res.json({ message: '设置提醒价格成功' });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: '设置提醒价格失败', error: error.message });
     }
   },
@@ -99,6 +103,7 @@ module.exports = {
         message: result.exists ? '该商品已收藏' : '该商品未收藏'
       });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: '查询收藏状态失败', error: error.message });
     }
   }
