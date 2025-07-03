@@ -71,10 +71,15 @@ module.exports = {
     try {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.pageSize) || 12;
+      const includeOffline = req.query.includeOffline === 'true';
       const offset = (page - 1) * pageSize;
 
+      // 构建查询条件
+      const whereClause = includeOffline ? '' : 'WHERE p.status = 1';
+      const countWhereClause = includeOffline ? '' : 'WHERE status = 1';
+
       // 查询总数
-      const [countRows] = await pool.query('SELECT COUNT(*) as count FROM products WHERE status = 1');
+      const [countRows] = await pool.query(`SELECT COUNT(*) as count FROM products ${countWhereClause}`);
       const total = countRows[0].count;
 
       // 查询分页数据
@@ -83,7 +88,7 @@ module.exports = {
                 (SELECT MIN(pp.price) FROM product_prices pp WHERE pp.product_id = p.id) as price,
                 (SELECT JSON_ARRAYAGG(pp.platform) FROM product_prices pp WHERE pp.product_id = p.id) as platforms
          FROM products p
-         WHERE p.status = 1
+         ${whereClause}
          ORDER BY p.id DESC
          LIMIT ? OFFSET ?`,
         [pageSize, offset]
