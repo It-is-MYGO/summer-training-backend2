@@ -1,4 +1,5 @@
 const userRepository = require('../repositories/user.repository');
+const logService = require('../../log/services/log.service'); // 路径根据实际项目结构调整
 
 // 获取所有用户
 exports.getAllUsers = async (req, res) => {
@@ -18,6 +19,16 @@ exports.updateUser = async (req, res) => {
   const { isadmin, status } = req.body;
   try {
     await userRepository.updateUserAdminStatus(id, { isadmin, status });
+    // 如果是被封禁，写日志
+    if (status === 'banned') {
+      await logService.addUserLog(
+        id,
+        'ban',
+        'success',
+        req.ip,
+        req.headers['user-agent']
+      );
+    }
     res.json({ message: '更新成功' });
   } catch (err) {
     res.status(500).json({ message: '更新失败' });

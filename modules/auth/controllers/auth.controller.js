@@ -1,10 +1,18 @@
 const authService = require('../services/auth.service');
+const logService = require('../../log/services/log.service');
 const { DB_ERROR_CODES } = require('../../../config/constants');
 
 class AuthController {
   async register(req, res, next) {
     try {
       const userId = await authService.register(req.body);
+      await logService.addUserLog(
+        userId,
+        'register',
+        'success',
+        req.ip,
+        req.headers['user-agent']
+      );
       res.status(201).json({ userId });
     } catch (error) {
       if (error.code === DB_ERROR_CODES.DUPLICATE_ENTRY) {
@@ -18,6 +26,13 @@ class AuthController {
   async login(req, res) {
     try {
       const result = await authService.login(req.body.username, req.body.password);
+      await logService.addUserLog(
+        result.user.id,
+        'login',
+        'success',
+        req.ip,
+        req.headers['user-agent']
+      );
       res.json(result);
     } catch (error) {
       res.status(401).json({ message: error.message });

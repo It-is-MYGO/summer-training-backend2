@@ -61,6 +61,18 @@ CREATE TABLE IF NOT EXISTS favorites (
   UNIQUE KEY unique_user_product (user_id, product_id)
 );
 
+-- 用户日志表
+CREATE TABLE IF NOT EXISTS user_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  action ENUM('register', 'login', 'logout') NOT NULL,
+  status ENUM('success', 'fail') DEFAULT 'success',
+  ip VARCHAR(64),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- 插入测试数据
 
 -- 插入测试用户
