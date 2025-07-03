@@ -47,6 +47,23 @@ class AuthController {
       res.status(500).json({ message: '更新用户信息失败' });
     }
   }
+
+  async refreshToken(req, res) {
+    try {
+      const user = req.user; // 由auth中间件挂载
+      const userRepository = require('../../user/repositories/user.repository');
+      const dbUser = await userRepository.findById(user.id);
+      if (!dbUser || dbUser.status === 'banned') {
+        return res.status(401).json({ message: '账号已被封禁，无法刷新token' });
+      }
+      const jwt = require('jsonwebtoken');
+      const { JWT } = require('../../../config/constants');
+      const newToken = jwt.sign({ id: user.id, username: user.username, isadmin: user.isadmin }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN });
+      res.json({ token: newToken });
+    } catch (error) {
+      res.status(401).json({ message: '刷新token失败' });
+    }
+  }
 }
 
 module.exports = new AuthController();
