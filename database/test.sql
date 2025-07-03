@@ -1,3 +1,4 @@
+--测试冷启动，手动插入数据
 INSERT INTO users (id, username, email, password, avatar, createdAt, updatedAt, isadmin, status, activity)
 VALUES
 (38, 'testuser38', 'test38@example.com', '123456', NULL, NOW(), NOW(), 0, 'active', 0),
@@ -52,3 +53,22 @@ VALUES
 (38, 43, '评论测试6', NOW()), (38, 44, '评论测试7', NOW()), (38, 45, '评论测试8', NOW()), (38, 46, '评论测试9', NOW()), (38, 47, '评论测试10', NOW()),
 (38, 48, '评论测试11', NOW()), (38, 49, '评论测试12', NOW()), (38, 50, '评论测试13', NOW()), (38, 51, '评论测试14', NOW()), (38, 52, '评论测试15', NOW()),
 (38, 53, '评论测试16', NOW()), (38, 54, '评论测试17', NOW()), (38, 55, '评论测试18', NOW()), (38, 56, '评论测试19', NOW()), (38, 57, '评论测试20', NOW());
+
+--测试协同过滤，用户1，2为相似用户
+INSERT INTO users (id, username, email, password, avatar, createdAt, updatedAt, isadmin, status, activity)
+VALUES
+(1, 'testuser1', 'test1@example.com', '123456', NULL, NOW(), NOW(), 0, 'active', 0),
+(2, 'testuser2', 'test2@example.com', '123456', NULL, NOW(), NOW(), 0, 'active', 0)
+ON DUPLICATE KEY UPDATE username=VALUES(username);
+INSERT INTO post_likes (postId, userId, createdAt) VALUES
+(54, 1, NOW()), (55, 1, NOW()), (56, 1, NOW()),
+(54, 2, NOW()), (55, 2, NOW()), (56, 2, NOW());
+INSERT INTO post_collections (postId, userId, createdAt) VALUES
+(54, 1, NOW()), (55, 1, NOW()), (56, 1, NOW()),
+(54, 2, NOW()), (55, 2, NOW()), (56, 2, NOW());
+INSERT INTO post_comments (postId, userId, content, createdAt) VALUES
+(54, 1, '评论测试1', NOW()), (55, 1, '评论测试2', NOW()), (56, 1, '评论测试3', NOW()),
+(54, 2, '评论测试4', NOW()), (55, 2, '评论测试5', NOW()), (56, 2, '评论测试6', NOW());
+INSERT INTO post_likes (postId, userId, createdAt) VALUES (57, 2, NOW());
+INSERT INTO post_collections (postId, userId, createdAt) VALUES (57, 2, NOW());
+INSERT INTO post_comments (postId, userId, content, createdAt) VALUES (57, 2, '评论测试7', NOW());  
