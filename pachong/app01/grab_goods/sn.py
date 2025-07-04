@@ -7,9 +7,17 @@ import csv
 from datetime import datetime
 import re
 
-def crawler(goods_word):
+def crawler(goods_word, max_pages=2, fast_mode=True):
+    """
+    苏宁商品爬虫
+    :param goods_word: 搜索关键词
+    :param max_pages: 最大翻页数，默认2页
+    :param fast_mode: 快速模式，减少延迟
+    """
     goods_info = []
     bro = avoid_check()
+    
+    print(f"开始搜索关键词: {goods_word}")
     bro.get('https://suning.com/')
     
     # 标签定位
@@ -19,17 +27,23 @@ def crawler(goods_word):
     # 点击搜索按钮
     btn = bro.find_element('id', value='searchSubmit')
     btn.submit()
-    sleep(random.uniform(2, 4))
+    
+    # 根据模式调整延迟
+    delay = 1 if fast_mode else random.uniform(2, 4)
+    sleep(delay)
     
     # 检查页面类型
     page_type = "product"  # 默认商品页
     if "brand.suning.com" in bro.current_url:
         page_type = "brand"
     
-    # 执行滚动加载
-    for i in range(1, 3):
+    print(f"页面类型: {page_type}")
+    
+    # 执行滚动加载（减少滚动次数和延迟）
+    scroll_times = 1 if fast_mode else 2
+    for i in range(scroll_times):
         bro.execute_script('window.scrollTo(0,document.body.scrollHeight)')
-        sleep(random.uniform(2, 3))
+        sleep(0.5 if fast_mode else random.uniform(2, 3))
     
     # 数据解析
     tree = etree.HTML(bro.page_source)
@@ -40,9 +54,12 @@ def crawler(goods_word):
     else:  # 品牌页
         goods_li_list = tree.xpath('//div[contains(@class, "item-list")]/ul/li')
     
+    print(f"第一页找到 {len(goods_li_list)} 个商品")
+    
     # 翻页处理
-    for i in range(1, 3):
+    for page_num in range(2, max_pages + 1):
         try:
+            print(f"正在处理第 {page_num} 页...")
             if page_type == "product":
                 btn_next = bro.find_element('id', value='nextPage')
             else:
@@ -50,12 +67,15 @@ def crawler(goods_word):
             
             url = btn_next.get_attribute('href')
             bro.get(url)
-            sleep(random.uniform(2, 4))
             
-            # 滚动加载
-            for j in range(1, 3):
+            # 根据模式调整延迟
+            delay = 0.5 if fast_mode else random.uniform(2, 4)
+            sleep(delay)
+            
+            # 滚动加载（减少滚动次数）
+            for j in range(scroll_times):
                 bro.execute_script('window.scrollTo(0,document.body.scrollHeight)')
-                sleep(random.uniform(2, 3))
+                sleep(0.3 if fast_mode else random.uniform(2, 3))
             
             # 解析新页面
             tree = etree.HTML(bro.page_source)
@@ -65,12 +85,17 @@ def crawler(goods_word):
                 new_items = tree.xpath('//div[contains(@class, "item-list")]/ul/li')
             
             goods_li_list.extend(new_items)
+            print(f"第 {page_num} 页找到 {len(new_items)} 个商品")
+            
         except Exception as e:
             print(f"翻页失败: {str(e)}")
             break
     
     # 解析商品信息
-    for li in goods_li_list:
+    parsed_count = 0
+    skipped_count = 0
+    
+    for i, li in enumerate(goods_li_list):
         try:
             # 商品图片
             if page_type == "product":
@@ -95,6 +120,8 @@ def crawler(goods_word):
             goods_price = ''.join([p.strip() for p in price_elem if p.strip()])
             goods_price = draw_num(goods_price)
             if not goods_price:
+                print(f"⚠️ 商品 {i+1}: 价格解析失败，跳过")
+                skipped_count += 1
                 continue
             
             # 销量
@@ -134,14 +161,24 @@ def crawler(goods_word):
                 'shop_platform': '苏宁',
                 'goods_link': goods_link,
                 'grab_time': time.strftime('%Y-%m-%d %H:%M', time.localtime()),
-                'page_type': page_type  # 添加页面类型标识
+                'page_type': page_type,  # 添加页面类型标识
+                'search_keyword': goods_word  # 添加搜索关键词字段
             })
+            parsed_count += 1
+            
         except Exception as e:
-            print(f"解析商品时出错: {str(e)}")
+            print(f"⚠️ 商品 {i+1}: 解析失败 - {str(e)}")
+            skipped_count += 1
             continue
     
-    sleep(2)
+    print(f"📊 解析统计: 成功 {parsed_count} 个，跳过 {skipped_count} 个")
+    
+    # 根据模式调整最终延迟
+    if not fast_mode:
+        sleep(2)
+    
     bro.quit()
+    print(f"爬取完成，共获取 {len(goods_info)} 个商品")
     return goods_info
 # def save_to_csv(data, filename='suning_products.csv'):
 #     """将爬取的数据保存为CSV文件"""
@@ -179,7 +216,7 @@ def save_to_csv(data, filename='suning_products.csv'):
     standard_fields = [
         'goods_img', 'goods_title', 'goods_price', 
         'goods_sales', 'shop_title', 'shop_platform',
-        'goods_link', 'grab_time', 'page_type'
+        'goods_link', 'grab_time', 'page_type', 'search_keyword'
     ]
     
     try:
@@ -210,7 +247,8 @@ def save_to_csv(data, filename='suning_products.csv'):
                         'shop_platform': row.get('shop_platform', '未知平台'),
                         'goods_link': clean_url(row.get('goods_link', '')),
                         'grab_time': row.get('grab_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                        'page_type': row.get('page_type', 'product')
+                        'page_type': row.get('page_type', 'product'),
+                        'search_keyword': clean_text(row.get('search_keyword', ''), max_length=50)
                     }
                     
                     # 确保所有字段都是字符串且正确处理None值
@@ -283,12 +321,25 @@ def clean_sales(sales):
 
 if __name__ == "__main__":
     word = "李宁"
-    sn_goods_info = crawler(goods_word=word)
+    
+    # 可以选择快速模式或正常模式
+    fast_mode = True  # 设置为True启用快速模式
+    
+    print("="*50)
+    print("苏宁商品爬虫")
+    print("="*50)
+    print(f"搜索关键词: {word}")
+    print(f"快速模式: {'开启' if fast_mode else '关闭'}")
+    print("="*50)
+    
+    sn_goods_info = crawler(goods_word=word, fast_mode=fast_mode)
     save_to_csv(sn_goods_info)
-    print(f"共获取 {len(sn_goods_info)} 条商品数据")
+    
+    print(f"\n共获取 {len(sn_goods_info)} 条商品数据")
     for idx, item in enumerate(sn_goods_info[:3], 1):  # 打印前3条作为示例
         print(f"\n商品 {idx}:")
         print(f"类型: {'商品页' if item['page_type'] == 'product' else '品牌页'}")
+        print(f"关键词: {item['search_keyword']}")
         print(f"标题: {item['goods_title']}")
         print(f"价格: {item['goods_price']}")
         print(f"销量: {item['goods_sales']}")
