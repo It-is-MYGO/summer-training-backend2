@@ -173,11 +173,63 @@ class PostController {
 
   // 删除用户所有动态
   async deleteAllUserPosts(req, res) {
+<<<<<<< HEAD
     try {
       const { userId } = req.params;
       const currentUserId = req.user.id;
       
       const result = await postService.deleteAllUserPosts(parseInt(userId), currentUserId);
+=======
+    try {
+      const { userId } = req.params;
+      const currentUserId = req.user.id;
+      const result = await postService.deleteAllUserPosts(parseInt(userId), currentUserId);
+      res.json({
+        code: 0,
+        message: `成功删除 ${result.deletedCount} 条动态`,
+        data: {
+          deletedCount: result.deletedCount
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        code: 1,
+        message: error.message,
+        data: null
+      });
+    }
+  }
+
+  // 点赞/取消点赞
+  async toggleLike(req, res) {
+    try {
+      const { id } = req.params;
+      const { like } = req.body;
+      const userId = req.user.id;
+      
+      // 验证postId参数
+      if (!id || id === 'undefined') {
+        return res.status(400).json({
+          code: 1,
+          message: '动态ID不能为空',
+          data: null
+        });
+      }
+      
+      // 验证like参数
+      if (like === undefined) {
+        return res.status(400).json({
+          code: 1,
+          message: '点赞参数不能为空',
+          data: null
+        });
+      }
+      
+      // 确保like是布尔值
+      const likeValue = Boolean(like);
+      
+      const result = await postService.toggleLike(id, userId, likeValue);
+>>>>>>> origin/pachong
       res.json({
         code: 0,
         message: `成功删除 ${result.deletedCount} 条动态`,
@@ -416,6 +468,49 @@ class PostController {
         data: posts.map(post => (typeof post.toJSON === 'function' ? post.toJSON() : post))
       });
     } catch (error) {
+<<<<<<< HEAD
+=======
+      res.status(400).json({
+        code: 1,
+        message: error.message,
+        data: null
+      });
+    }
+  }
+
+  // 获取用户个人动态
+  async getUserPosts(req, res) {
+    try {
+      const { userId } = req.params;
+      const {
+        page = 1,
+        pageSize = 10,
+        sort = 'latest'
+      } = req.query;
+      const currentUserId = req.user?.id || null;
+
+      const options = {
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        sort,
+        targetUserId: parseInt(userId),
+        currentUserId
+      };
+
+      const result = await postService.getUserPosts(options);
+
+      res.json({
+        code: 0,
+        message: 'success',
+        data: {
+          list: result.list.map(post => post.toJSON()),
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize
+        }
+      });
+    } catch (error) {
+>>>>>>> origin/pachong
       res.status(400).json({
         code: 1,
         message: error.message,

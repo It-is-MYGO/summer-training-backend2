@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { getImageUrl } = require('../../../lib/utils/url');
 
 // 配置multer存储
 const storage = multer.diskStorage({
@@ -63,8 +64,7 @@ class UploadController {
         const { userId } = req.body;
         
         // 生成访问URL
-        const baseUrl = req.protocol + '://' + req.get('host');
-        const imageUrl = `${baseUrl}/uploads/images/${req.file.filename}`;
+        const imageUrl = getImageUrl(req.file.filename);
 
         res.json({
           code: 0,
@@ -116,10 +116,9 @@ class UploadController {
         }
 
         const { userId } = req.body;
-        const baseUrl = req.protocol + '://' + req.get('host');
         
         const uploadedFiles = req.files.map(file => ({
-          url: `${baseUrl}/uploads/images/${file.filename}`,
+          url: getImageUrl(file.filename),
           filename: file.filename,
           size: file.size,
           type: file.mimetype

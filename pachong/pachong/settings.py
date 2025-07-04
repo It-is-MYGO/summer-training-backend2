@@ -73,30 +73,13 @@ WSGI_APPLICATION = 'pachong.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-'''
- DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'pricecompare',
         'USER': 'root',
         'PASSWORD': 'Whu@123456',
         'HOST': 'localhost', # 或你的数据库服务器IP
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
-    }
-}
-'''
-
-#仅作本地测试用，正式部署时请使用其他数据库
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'pricecompare',
-        'USER': 'root',
-        'PASSWORD': '123456',
-        'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",

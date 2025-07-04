@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const authMiddleware = require('../../../lib/middleware/auth');
+const { getImageUrl } = require('../../../lib/utils/url');
 
 // 配置multer存储 - 头像
 const avatarStorage = multer.diskStorage({
@@ -99,7 +100,7 @@ router.post('/avatar', authMiddleware, (req, res, next) => {
     });
 
     // 生成文件访问URL
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const avatarUrl = getImageUrl(req.file.filename);
     
     // 更新用户头像信息到数据库
     const userRepository = require('../../user/repositories/user.repository');
@@ -167,7 +168,7 @@ router.post('/image', authMiddleware, (req, res, next) => {
     });
 
     // 生成文件访问URL
-    const imageUrl = `/uploads/images/${req.file.filename}`;
+    const imageUrl = getImageUrl(req.file.filename);
     
     console.log('图片URL生成成功:', imageUrl);
     res.json({ 

@@ -6,11 +6,18 @@ import random
 import csv
 from datetime import datetime
 import re
-import pymysql
 
-def crawler(goods_word):
+def crawler(goods_word, max_pages=2, fast_mode=True):
+    """
+    苏宁商品爬虫
+    :param goods_word: 搜索关键词
+    :param max_pages: 最大翻页数，默认2页
+    :param fast_mode: 快速模式，减少延迟
+    """
     goods_info = []
     bro = avoid_check()
+    
+    print(f"开始搜索关键词: {goods_word}")
     bro.get('https://suning.com/')
     
     # 标签定位
@@ -20,17 +27,23 @@ def crawler(goods_word):
     # 点击搜索按钮
     btn = bro.find_element('id', value='searchSubmit')
     btn.submit()
-    sleep(random.uniform(2, 4))
+    
+    # 根据模式调整延迟
+    delay = 1 if fast_mode else random.uniform(2, 4)
+    sleep(delay)
     
     # 检查页面类型
     page_type = "product"  # 默认商品页
     if "brand.suning.com" in bro.current_url:
         page_type = "brand"
     
-    # 执行滚动加载
-    for i in range(1, 3):
+    print(f"页面类型: {page_type}")
+    
+    # 执行滚动加载（减少滚动次数和延迟）
+    scroll_times = 1 if fast_mode else 2
+    for i in range(scroll_times):
         bro.execute_script('window.scrollTo(0,document.body.scrollHeight)')
-        sleep(random.uniform(2, 3))
+        sleep(0.5 if fast_mode else random.uniform(2, 3))
     
     # 数据解析
     tree = etree.HTML(bro.page_source)
@@ -41,9 +54,12 @@ def crawler(goods_word):
     else:  # 品牌页
         goods_li_list = tree.xpath('//div[contains(@class, "item-list")]/ul/li')
     
+    print(f"第一页找到 {len(goods_li_list)} 个商品")
+    
     # 翻页处理
-    for i in range(1, 3):
+    for page_num in range(2, max_pages + 1):
         try:
+            print(f"正在处理第 {page_num} 页...")
             if page_type == "product":
                 btn_next = bro.find_element('id', value='nextPage')
             else:
@@ -51,12 +67,15 @@ def crawler(goods_word):
             
             url = btn_next.get_attribute('href')
             bro.get(url)
-            sleep(random.uniform(2, 4))
             
-            # 滚动加载
-            for j in range(1, 3):
+            # 根据模式调整延迟
+            delay = 0.5 if fast_mode else random.uniform(2, 4)
+            sleep(delay)
+            
+            # 滚动加载（减少滚动次数）
+            for j in range(scroll_times):
                 bro.execute_script('window.scrollTo(0,document.body.scrollHeight)')
-                sleep(random.uniform(2, 3))
+                sleep(0.3 if fast_mode else random.uniform(2, 3))
             
             # 解析新页面
             tree = etree.HTML(bro.page_source)
@@ -66,12 +85,17 @@ def crawler(goods_word):
                 new_items = tree.xpath('//div[contains(@class, "item-list")]/ul/li')
             
             goods_li_list.extend(new_items)
+            print(f"第 {page_num} 页找到 {len(new_items)} 个商品")
+            
         except Exception as e:
             print(f"翻页失败: {str(e)}")
             break
     
     # 解析商品信息
-    for li in goods_li_list:
+    parsed_count = 0
+    skipped_count = 0
+    
+    for i, li in enumerate(goods_li_list):
         try:
             # 商品图片
             if page_type == "product":
@@ -96,6 +120,8 @@ def crawler(goods_word):
             goods_price = ''.join([p.strip() for p in price_elem if p.strip()])
             goods_price = draw_num(goods_price)
             if not goods_price:
+                print(f"⚠️ 商品 {i+1}: 价格解析失败，跳过")
+                skipped_count += 1
                 continue
             
             # 销量
@@ -135,16 +161,43 @@ def crawler(goods_word):
                 'shop_platform': '苏宁',
                 'goods_link': goods_link,
                 'grab_time': time.strftime('%Y-%m-%d %H:%M', time.localtime()),
-                'page_type': page_type  # 添加页面类型标识
+                'page_type': page_type,  # 添加页面类型标识
+                'search_keyword': goods_word  # 添加搜索关键词字段
             })
+            parsed_count += 1
+            
         except Exception as e:
-            print(f"解析商品时出错: {str(e)}")
+            print(f"⚠️ 商品 {i+1}: 解析失败 - {str(e)}")
+            skipped_count += 1
             continue
     
-    sleep(2)
+    print(f"📊 解析统计: 成功 {parsed_count} 个，跳过 {skipped_count} 个")
+    
+    # 根据模式调整最终延迟
+    if not fast_mode:
+        sleep(2)
+    
     bro.quit()
+    print(f"爬取完成，共获取 {len(goods_info)} 个商品")
     return goods_info
-
+# def save_to_csv(data, filename='suning_products.csv'):
+#     """将爬取的数据保存为CSV文件"""
+#     if not data:
+#         print("没有数据可保存")
+#         return
+    
+#     # 获取字段名（使用第一条数据的键）
+#     fieldnames = data[0].keys()
+    
+#     try:
+#         with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+#             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+#             writer.writeheader()  # 写入表头
+#             writer.writerows(data)  # 写入所有数据
+        
+#         print(f"成功保存 {len(data)} 条数据到 {filename}")
+#     except Exception as e:
+#         print(f"保存CSV文件时出错: {str(e)}")
 def save_to_csv(data, filename='suning_products.csv'):
     """
     将爬取的数据保存为严格符合RFC 4180标准的CSV文件
@@ -163,7 +216,7 @@ def save_to_csv(data, filename='suning_products.csv'):
     standard_fields = [
         'goods_img', 'goods_title', 'goods_price', 
         'goods_sales', 'shop_title', 'shop_platform',
-        'goods_link', 'grab_time', 'page_type'
+        'goods_link', 'grab_time', 'page_type', 'search_keyword'
     ]
     
     try:
@@ -194,7 +247,8 @@ def save_to_csv(data, filename='suning_products.csv'):
                         'shop_platform': row.get('shop_platform', '未知平台'),
                         'goods_link': clean_url(row.get('goods_link', '')),
                         'grab_time': row.get('grab_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                        'page_type': row.get('page_type', 'product')
+                        'page_type': row.get('page_type', 'product'),
+                        'search_keyword': clean_text(row.get('search_keyword', ''), max_length=50)
                     }
                     
                     # 确保所有字段都是字符串且正确处理None值
@@ -265,92 +319,29 @@ def clean_sales(sales):
     sales = re.sub(r'[^0-9]', '', sales)  # 只保留数字
     return sales if sales else '0'
 
-def write_to_mysql(goods):
-    conn = pymysql.connect(
-        host='localhost',
-        user='root',
-        password='123456',
-        database='pricecompare',
-        charset='utf8mb4'
-    )
-    cursor = conn.cursor()
-
-    desc = goods.get('goods_title', '暂无描述')
-    # 确保图片链接完整，写入 img 字段
-    img = goods.get('goods_img', '')
-    if img and not img.startswith('http'):
-        img = 'https:' + img if img.startswith('//') else img
-    # category
-    category = '未分类'
-    # 品牌名用店铺名
-    brand_name = goods.get('shop_title', '未知品牌')
-    cursor.execute("SELECT id FROM brands WHERE name=%s", (brand_name,))
-    brand_result = cursor.fetchone()
-    if brand_result:
-        brand_id = brand_result[0]
-    else:
-        cursor.execute("INSERT INTO brands (name) VALUES (%s)", (brand_name,))
-        brand_id = cursor.lastrowid
-
-    # 自动判定 is_hot 和 is_drop
-    try:
-        sales = int(goods.get('goods_sales', '0'))
-    except Exception:
-        sales = 0
-    is_hot = 1 if sales > 2000 else 0
-
-    price_yuan = float(goods['goods_price']) / 100 if float(goods['goods_price']) > 1000 else float(goods['goods_price'])
-    is_drop = 1 if price_yuan < 100 else 0
-
-    # 查找或插入 products
-    cursor.execute("SELECT id FROM products WHERE title=%s", (goods['goods_title'],))
-    result = cursor.fetchone()
-    if result:
-        product_id = result[0]
-    else:
-        cursor.execute(
-            """INSERT INTO products \
-            (title, `desc`, img, category, brand_id, is_hot, is_drop, created_at, updated_at, status)\
-            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), 1)\
-            """, (goods['goods_title'], desc, img, category, brand_id, is_hot, is_drop)
-        )
-        product_id = cursor.lastrowid
-
-    # 插入 product_prices（价格转为元，保留两位小数），避免重复
-    price_date = goods['grab_time'].split(' ')[0]
-    cursor.execute(
-        "SELECT id FROM product_prices WHERE product_id=%s AND platform=%s AND date=%s",
-        (product_id, goods['shop_platform'], price_date)
-    )
-    if not cursor.fetchone():
-        cursor.execute(
-            "INSERT INTO product_prices (product_id, platform, price, date, url, created_at) VALUES (%s, %s, %s, %s, %s, NOW())",
-            (product_id, goods['shop_platform'], round(price_yuan, 2), price_date, goods['goods_link'])
-        )
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
 if __name__ == "__main__":
-    # 支持批量关键词采集
-    keywords = ["李宁", "耐克", "阿迪达斯", "安踏", "特步", "鸿星尔克", "匹克", "乔丹", "彪马", "斐乐"]
-    total_count = 0
-    for word in keywords:
-        print(f"\n开始采集关键词：{word}")
-        sn_goods_info = crawler(goods_word=word)
-        save_to_csv(sn_goods_info, filename=f'suning_products_{word}.csv')
-        print(f"共获取 {len(sn_goods_info)} 条商品数据 for {word}")
-        for idx, item in enumerate(sn_goods_info[:3], 1):  # 打印前3条作为示例
-            print(f"\n商品 {idx}:")
-            print(f"类型: {'商品页' if item['page_type'] == 'product' else '品牌页'}")
-            print(f"标题: {item['goods_title']}")
-            print(f"价格: {item['goods_price']}")
-            print(f"销量: {item['goods_sales']}")
-            print(f"店铺: {item['shop_title']}")
-            print(f"链接: {item['goods_link']}")
-        # 新增：写入数据库
-        for item in sn_goods_info:
-            write_to_mysql(item)
-        total_count += len(sn_goods_info)
-    print(f"已写入 {total_count} 条商品数据到数据库 products 和 product_prices 表。")
+    word = "李宁"
+    
+    # 可以选择快速模式或正常模式
+    fast_mode = True  # 设置为True启用快速模式
+    
+    print("="*50)
+    print("苏宁商品爬虫")
+    print("="*50)
+    print(f"搜索关键词: {word}")
+    print(f"快速模式: {'开启' if fast_mode else '关闭'}")
+    print("="*50)
+    
+    sn_goods_info = crawler(goods_word=word, fast_mode=fast_mode)
+    save_to_csv(sn_goods_info)
+    
+    print(f"\n共获取 {len(sn_goods_info)} 条商品数据")
+    for idx, item in enumerate(sn_goods_info[:3], 1):  # 打印前3条作为示例
+        print(f"\n商品 {idx}:")
+        print(f"类型: {'商品页' if item['page_type'] == 'product' else '品牌页'}")
+        print(f"关键词: {item['search_keyword']}")
+        print(f"标题: {item['goods_title']}")
+        print(f"价格: {item['goods_price']}")
+        print(f"销量: {item['goods_sales']}")
+        print(f"店铺: {item['shop_title']}")
+        print(f"链接: {item['goods_link']}")

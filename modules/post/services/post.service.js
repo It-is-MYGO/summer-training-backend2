@@ -366,6 +366,7 @@ class PostService {
       throw error;
     }
   }
+<<<<<<< HEAD
 
   // 新增：管理员审核动态
   async updatePostStatus(id, status, adminId) {
@@ -384,6 +385,8 @@ class PostService {
     }
     return { id, status };
   }
+=======
+>>>>>>> origin/pachong
 }
 
 module.exports = new PostService(); 
