@@ -32,11 +32,19 @@ const deleteBrand = async (req, res) => {
   }
 };
 
+const paged = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const { rows, total } = await brandService.getPaged(page, pageSize);
+  res.json({ data: rows, total });
+};
+
 module.exports = {
   list,
   get,
   create,
   update,
-  deleteBrand
+  deleteBrand,
+  paged
 };
 

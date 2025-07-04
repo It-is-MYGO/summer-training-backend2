@@ -129,6 +129,16 @@ class UserRepository {
     const [rows] = await pool.query(sql, [email]);
     return rows[0] || null;
   }
+
+  async getUsersPaged(page = 1, pageSize = 10) {
+    const offset = (page - 1) * pageSize;
+    const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM users');
+    const [rows] = await pool.query(
+      'SELECT id, username, email, isadmin, avatar, status FROM users ORDER BY id DESC LIMIT ? OFFSET ?',
+      [pageSize, offset]
+    );
+    return { rows, total };
+  }
 }
 
 module.exports = new UserRepository();

@@ -44,6 +44,16 @@ const deleteBrand = async (id) => {
   return result;
 };
 
+const getPaged = async (page = 1, pageSize = 10) => {
+  const offset = (page - 1) * pageSize;
+  const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM brands');
+  const [rows] = await pool.query(
+    'SELECT * FROM brands ORDER BY id DESC LIMIT ? OFFSET ?',
+    [pageSize, offset]
+  );
+  return { rows, total };
+};
+
 module.exports = {
   getAll,
   getAllWithKeyword,
@@ -51,5 +61,6 @@ module.exports = {
   create,
   update,
   unpublishProductsByBrandId,
-  deleteBrand
+  deleteBrand,
+  getPaged
 };

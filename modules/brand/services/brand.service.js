@@ -10,5 +10,6 @@ module.exports = {
     await brandRepo.unpublishProductsByBrandId(brandId);
     // 再删除品牌
     return await brandRepo.deleteBrand(brandId);
-  }
+  },
+  getPaged: (page, pageSize) => brandRepo.getPaged(page, pageSize)
 };

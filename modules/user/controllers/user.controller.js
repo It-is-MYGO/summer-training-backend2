@@ -61,4 +61,16 @@ exports.getActivityDistribution = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: '获取活跃度分布失败', error: err.message });
   }
+};
+
+// 获取用户分页数据
+exports.getUsersPaged = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  try {
+    const { rows, total } = await userRepository.getUsersPaged(page, pageSize);
+    res.json({ data: rows, total });
+  } catch (err) {
+    res.status(500).json({ message: '获取用户失败', error: err.message });
+  }
 }; 

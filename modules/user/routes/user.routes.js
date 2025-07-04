@@ -10,5 +10,7 @@ router.put('/:id', userController.updateUser);
 router.delete('/:id', userController.deleteUser);
 // 获取用户活跃度分布
 router.get('/activity-distribution', userController.getActivityDistribution);
+// 获取用户分页
+router.get('/paged', userController.getUsersPaged);
 
 module.exports = router; 
