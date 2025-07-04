@@ -9,7 +9,7 @@ SELECT
   f.product_id,
   f.alert_price,
   p.title,
-  p.image,
+  p.img,
   pp.price,
   (pp.price - f.alert_price) as price_change
 FROM favorites f
