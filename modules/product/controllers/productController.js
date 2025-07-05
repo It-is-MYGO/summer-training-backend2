@@ -235,6 +235,24 @@ module.exports = {
     } catch (error) {
       res.status(500).json({ code: 1, message: '获取品牌商品失败', error: error.message });
     }
+  },
+
+  // 获取商品分类分布数据
+  async getCategoryDistribution(req, res) {
+    try {
+      const distribution = await productService.getCategoryDistribution();
+      res.json({ 
+        code: 0, 
+        message: '获取分类分布成功', 
+        data: distribution 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        code: 1, 
+        message: '获取分类分布失败', 
+        error: error.message 
+      });
+    }
   }
 };
 

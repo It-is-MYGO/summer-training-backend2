@@ -6,6 +6,7 @@ class AuthController {
   async register(req, res, next) {
     try {
       const userId = await authService.register(req.body);
+      // 添加用户注册日志
       await logService.addUserLog(
         userId,
         'register',
@@ -26,6 +27,7 @@ class AuthController {
   async login(req, res) {
     try {
       const result = await authService.login(req.body.username, req.body.password);
+      // 添加用户登录日志
       await logService.addUserLog(
         result.user.id,
         'login',
@@ -65,16 +67,16 @@ class AuthController {
 
   async refreshToken(req, res) {
     try {
-      const user = req.user; // 由auth中间件挂载
-      const userRepository = require('../../user/repositories/user.repository');
+      const user = req.user; // 获取用户信息
+      const userRepository = require('../../user/repositories/user.repository');// 获取用户信息
       const dbUser = await userRepository.findById(user.id);
       if (!dbUser || dbUser.status === 'banned') {
         return res.status(401).json({ message: '账号已被封禁，无法刷新token' });
       }
-      const jwt = require('jsonwebtoken');
-      const { JWT } = require('../../../config/constants');
+      const jwt = require('jsonwebtoken');// 生成token
+      const { JWT } = require('../../../config/constants');// 获取token配置
       const newToken = jwt.sign({ id: user.id, username: user.username, isadmin: user.isadmin }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN });
-      res.json({ token: newToken });
+      res.json({ token: newToken });//返回新token
     } catch (error) {
       res.status(401).json({ message: '刷新token失败' });
     }

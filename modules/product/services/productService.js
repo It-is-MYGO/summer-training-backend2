@@ -178,5 +178,30 @@ module.exports = {
       brand = { id, name };
     }
     return [brand];
+  },
+
+  // 获取商品分类分布数据
+  async getCategoryDistribution() {
+    try {
+      const distribution = await productRepository.getCategoryDistribution();
+      
+      // 格式化数据，确保所有分类都有数据
+      const allCategories = [
+        '手机数码', '服装鞋帽', '运动户外', '家居生活', '食品饮料',
+        '母婴用品', '美妆护肤', '图书音像', '汽车用品', '医药保健', '未分类'
+      ];
+      
+      const categoryMap = new Map(distribution.map(item => [item.category, item.count]));
+      
+      const formattedData = allCategories.map(category => ({
+        category,
+        count: categoryMap.get(category) || 0
+      }));
+      
+      return formattedData;
+    } catch (error) {
+      console.error('获取分类分布失败:', error);
+      throw new Error('获取分类分布失败');
+    }
   }
 };

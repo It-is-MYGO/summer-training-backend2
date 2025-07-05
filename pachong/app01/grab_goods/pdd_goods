@@ -1,0 +1,612 @@
+import requests
+import time
+import random
+import json
+from bs4 import BeautifulSoup
+import re
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
+import pickle
+import os
+import pymysql
+from datetime import datetime
+
+# 多个User-Agent轮换
+USER_AGENTS = [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Mobile Safari/537.36',
+]
+
+# Cookie文件路径
+COOKIE_FILE = 'pdd_cookies.pkl'
+
+def save_cookies(driver, filename=COOKIE_FILE):
+    """保存cookies到文件"""
+    try:
+        cookies = driver.get_cookies()
+        with open(filename, 'wb') as f:
+            pickle.dump(cookies, f)
+        print(f"Cookies已保存到 {filename}")
+        return True
+    except Exception as e:
+        print(f"保存cookies失败: {e}")
+        return False
+
+def load_cookies(driver, filename=COOKIE_FILE):
+    """从文件加载cookies"""
+    try:
+        if os.path.exists(filename):
+            with open(filename, 'rb') as f:
+                cookies = pickle.load(f)
+            for cookie in cookies:
+                try:
+                    driver.add_cookie(cookie)
+                except:
+                    continue
+            print(f"Cookies已从 {filename} 加载")
+            return True
+        else:
+            print(f"Cookie文件 {filename} 不存在")
+            return False
+    except Exception as e:
+        print(f"加载cookies失败: {e}")
+        return False
+
+def manual_login_guide():
+    """手动登录指导"""
+    print("\n" + "="*60)
+    print("拼多多手动登录指导")
+    print("="*60)
+    print("\n步骤1：打开浏览器")
+    print("1. 启动Chrome浏览器")
+    print("2. 访问 https://mobile.yangkeduo.com")
+    print("\n步骤2：登录账号")
+    print("1. 点击右上角的'登录'按钮")
+    print("2. 选择登录方式：")
+    print("   - 手机号登录")
+    print("   - 微信登录")
+    print("   - QQ登录")
+    print("3. 完成登录验证")
+    print("\n步骤3：验证登录状态")
+    print("1. 登录成功后，尝试搜索商品")
+    print("2. 确认能正常显示搜索结果")
+    print("3. 保持浏览器打开状态")
+    print("\n步骤4：运行爬虫")
+    print("1. 回到命令行")
+    print("2. 选择'使用已登录的浏览器'选项")
+    print("3. 程序会自动获取登录状态")
+    print("="*60)
+
+def get_random_headers():
+    """获取随机的请求头"""
+    return {
+        'User-Agent': random.choice(USER_AGENTS),
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Referer': 'https://mobile.yangkeduo.com/',
+        'Origin': 'https://mobile.yangkeduo.com',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+    }
+
+def search_goods_with_login(keyword, page=1, size=10):
+    """使用登录状态搜索商品"""
+    print(f"开始搜索商品: {keyword}")
+    
+    try:
+        # 配置Chrome选项
+        chrome_options = Options()
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        
+        # 添加反检测
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        driver = webdriver.Chrome(options=chrome_options)
+        
+        # 执行反检测脚本
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+        try:
+            # 先访问主页
+            print("访问拼多多主页...")
+            driver.get('https://mobile.yangkeduo.com')
+            time.sleep(3)
+            
+            # 尝试加载已保存的cookies
+            if load_cookies(driver):
+                print("使用已保存的登录状态...")
+                # 刷新页面以应用cookies
+                driver.refresh()
+                time.sleep(3)
+            else:
+                print("没有找到已保存的登录状态")
+            
+            # 直接搜索商品，不检查登录状态
+            search_url = f'https://mobile.yangkeduo.com/search_result.html?search_key={keyword}'
+            print(f"正在搜索: {keyword}")
+            driver.get(search_url)
+            time.sleep(5)
+            
+            # 保存页面源码用于调试
+            with open('pdd_search_result.html', 'w', encoding='utf-8') as f:
+                f.write(driver.page_source)
+            print("已保存搜索结果页面到 pdd_search_result.html")
+            
+            # 滑动页面加载更多商品
+            print("开始滑动页面加载更多商品...")
+            scroll_and_extract_goods(driver, size)
+            
+            # 提取商品信息
+            goods_list = extract_goods_from_search_page(driver, size)
+            
+            # 如果没找到商品，可能是未登录，提示用户
+            if not goods_list:
+                print("⚠️ 未找到商品，可能需要登录")
+                print("请在浏览器中完成登录，然后按回车继续...")
+                input("登录完成后按回车继续...")
+                save_cookies(driver)
+                
+                # 重新搜索
+                print("重新搜索商品...")
+                driver.get(search_url)
+                time.sleep(5)
+                goods_list = extract_goods_from_search_page(driver, size)
+            
+            return goods_list
+            
+        finally:
+            driver.quit()
+            
+    except Exception as e:
+        print(f"搜索商品时出错: {e}")
+        return []
+
+def scroll_and_extract_goods(driver, target_count):
+    """滑动页面并加载更多商品"""
+    try:
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        scroll_count = 0
+        max_scrolls = 10  # 最大滑动次数
+        
+        while scroll_count < max_scrolls:
+            # 滑动到页面底部
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)  # 等待页面加载
+            
+            # 检查是否有新内容加载
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                print("已到达页面底部，停止滑动")
+                break
+            
+            last_height = new_height
+            scroll_count += 1
+            
+            # 检查当前商品数量
+            current_goods = driver.find_elements(By.CSS_SELECTOR, '[class*="product"], [class*="goods"], [class*="item"]')
+            print(f"滑动 {scroll_count} 次，当前找到 {len(current_goods)} 个商品")
+            
+            if len(current_goods) >= target_count:
+                print(f"已达到目标商品数量 {target_count}，停止滑动")
+                break
+            
+            # 随机延迟，模拟人工操作
+            time.sleep(random.uniform(1, 3))
+        
+        print(f"滑动完成，共滑动 {scroll_count} 次")
+        
+    except Exception as e:
+        print(f"滑动页面时出错: {e}")
+
+def check_login_status(driver):
+    """简化的登录状态检查 - 仅用于调试"""
+    try:
+        current_url = driver.current_url
+        page_title = driver.title
+        print(f"当前页面: {current_url}")
+        print(f"页面标题: {page_title}")
+        
+        # 简单检查：如果URL包含login，说明未登录
+        if 'login' in current_url.lower():
+            print("检测到登录页面")
+            return False
+        
+        print("页面正常，继续执行...")
+        return True
+            
+    except Exception as e:
+        print(f"检查页面状态时出错: {e}")
+        return True
+
+def extract_goods_from_search_page(driver, size):
+    """从搜索结果页面提取商品信息"""
+    goods_list = []
+    
+    # 等待商品列表加载
+    time.sleep(5)  # 增加等待时间
+    
+    print("开始查找商品元素...")
+    
+    # 尝试多种选择器来找到商品
+    selectors_to_try = [
+        '._3glhOBhU',  # PDD商品元素的主要选择器
+        '.product-item',
+        '.goods-item', 
+        '.item-card',
+        '[class*="product"]',
+        '[class*="goods"]',
+        '[class*="item"]',
+        'li[class*="product"]',
+        'div[class*="product"]',
+        'a[href*="goods"]',
+        'img[src*="goods"]',
+        '.search-result-item',
+        '.product-card',
+        '.goods-card',
+        '.product-list-item',
+        '.goods-list-item',
+        '[data-testid*="product"]',
+        '[data-testid*="goods"]',
+        '.list-item',
+        '.card',
+        'li',
+        'div[class*="card"]',
+    ]
+    
+    found_elements = False
+    for selector in selectors_to_try:
+        try:
+            elements = driver.find_elements(By.CSS_SELECTOR, selector)
+            if elements:
+                print(f"✅ 使用选择器 '{selector}' 找到 {len(elements)} 个元素")
+                found_elements = True
+                
+                # 检查这些元素是否包含商品信息
+                valid_elements = 0
+                for i, element in enumerate(elements[:size]):
+                    try:
+                        # 检查元素是否包含价格信息
+                        element_text = element.text.lower()
+                        if '¥' in element_text or '￥' in element_text or '元' in element_text:
+                            goods = extract_goods_from_element(element)
+                            if goods and goods['goods_name'] != "未知商品":
+                                goods_list.append(goods)
+                                print(f"  📦 商品 {i+1}: {goods['goods_name']} - {goods['min_group_price']}")
+                                valid_elements += 1
+                        else:
+                            print(f"  ⚠️ 元素 {i+1} 不包含价格信息，跳过")
+                    except Exception as e:
+                        print(f"  ❌ 提取商品 {i+1} 时出错: {e}")
+                        continue
+                
+                print(f"  📊 从 {len(elements)} 个元素中提取到 {valid_elements} 个有效商品")
+                
+                if goods_list:
+                    break
+            else:
+                print(f"❌ 选择器 '{selector}' 未找到元素")
+        except Exception as e:
+            print(f"❌ 选择器 '{selector}' 出错: {e}")
+            continue
+    
+    if not found_elements:
+        print("⚠️ 所有选择器都未找到任何元素")
+        print("正在保存页面源码用于调试...")
+        with open('pdd_debug_page.html', 'w', encoding='utf-8') as f:
+            f.write(driver.page_source)
+        print("页面源码已保存到 pdd_debug_page.html")
+    
+    # 如果没有找到商品，尝试从页面文本中提取
+    if not goods_list:
+        print("尝试从页面文本中提取商品信息...")
+        page_source = driver.page_source
+        goods_list = extract_goods_from_page_source(page_source, size)
+    
+    print(f"🎯 最终提取到 {len(goods_list)} 个商品")
+    return goods_list
+
+def extract_goods_from_element(element):
+    """从Selenium元素中提取商品信息"""
+    try:
+        # 查找商品名称 - PDD特定的选择器
+        name_selectors = [
+            '._3ANzdjkc',  # PDD商品标题的主要选择器
+            'h3', 'h4', 'h5',
+            '[class*="title"]', '[class*="name"]',
+            'span[class*="title"]', 'span[class*="name"]',
+        ]
+        
+        name = "未知商品"
+        for selector in name_selectors:
+            try:
+                name_elem = element.find_element(By.CSS_SELECTOR, selector)
+                name = name_elem.text.strip()
+                if name and len(name) > 2:
+                    break
+            except:
+                continue
+        
+        # 查找价格 - PDD特定的选择器
+        price_selectors = [
+            '._3_U04GgA',  # PDD价格的主要选择器
+            '[class*="price"]',
+            'span:contains("¥")', 'span:contains("￥")',
+        ]
+        
+        price = "价格未知"
+        for selector in price_selectors:
+            try:
+                price_elem = element.find_element(By.CSS_SELECTOR, selector)
+                price_text = price_elem.text.strip()
+                if '¥' in price_text or '￥' in price_text or re.search(r'\d+\.?\d*', price_text):
+                    price = price_text
+                    break
+            except:
+                continue
+        
+        # 查找销量 - PDD特定的选择器
+        sales_selectors = [
+            '._32q8gNKM',  # PDD销量的主要选择器
+            '[class*="sales"]',
+            '[class*="sold"]',
+        ]
+        
+        sales = "销量未知"
+        for selector in sales_selectors:
+            try:
+                sales_elem = element.find_element(By.CSS_SELECTOR, selector)
+                sales = sales_elem.text.strip()
+                if sales and len(sales) > 0:
+                    break
+            except:
+                continue
+        
+        # 查找图片
+        try:
+            img_elem = element.find_element(By.TAG_NAME, 'img')
+            img_url = img_elem.get_attribute('src') or img_elem.get_attribute('data-src')
+        except:
+            img_url = ""
+        
+        # 查找商品ID
+        goods_id = None
+        try:
+            link_elem = element.find_element(By.TAG_NAME, 'a')
+            href = link_elem.get_attribute('href')
+            match = re.search(r'goods_id=(\d+)', href)
+            if match:
+                goods_id = match.group(1)
+        except:
+            pass
+        
+        return {
+            'goods_id': goods_id or f"temp_{random.randint(1000, 9999)}",
+            'goods_name': name,
+            'min_group_price': price,
+            'sales_tip': sales,
+            'image_url': img_url,
+        }
+        
+    except Exception as e:
+        print(f"提取元素信息时出错: {e}")
+        return None
+
+def extract_goods_from_page_source(page_source, size):
+    """从页面源码中提取商品信息"""
+    goods_list = []
+    
+    # 使用正则表达式查找商品信息
+    # 查找价格模式
+    price_pattern = r'¥\s*(\d+\.?\d*)'
+    prices = re.findall(price_pattern, page_source)
+    
+    # 查找可能的商品名称（在价格附近的文本）
+    lines = page_source.split('\n')
+    
+    for i, line in enumerate(lines):
+        if re.search(price_pattern, line):
+            # 向上查找商品名称
+            name = "未知商品"
+            for j in range(max(0, i-5), i):
+                if j < len(lines):
+                    text = lines[j].strip()
+                    if text and len(text) > 3 and len(text) < 100:
+                        # 排除价格、数字等
+                        if not re.search(r'¥|￥|\d+\.?\d*元|\d+\.?\d*块', text):
+                            name = text
+                            break
+            
+            price_match = re.search(price_pattern, line)
+            if price_match:
+                goods = {
+                    'goods_id': f"temp_{random.randint(1000, 9999)}",
+                    'goods_name': name,
+                    'min_group_price': f"¥{price_match.group(1)}",
+                    'sales_tip': "销量未知",
+                    'image_url': "",
+                }
+                goods_list.append(goods)
+                
+                if len(goods_list) >= size:
+                    break
+    
+    return goods_list
+
+def get_comments(goods_id, page=1, size=10):
+    """获取商品评论"""
+    try:
+        url = f'https://apiv3.yangkeduo.com/reviews/{goods_id}/list'
+        params = {
+            'size': size,
+            'page': page,
+            'pdduid': 0,
+        }
+        headers = get_random_headers()
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        
+        if resp.status_code != 200:
+            print(f"获取评论失败: {resp.text}")
+            return []
+            
+        data = resp.json()
+        comments = []
+        for c in data.get('reviews', []):
+            comments.append({
+                'content': c.get('content'),
+                'nickname': c.get('nickname'),
+                'created_at': c.get('created_at'),
+            })
+        return comments
+    except Exception as e:
+        print(f"获取评论时出错: {e}")
+        return []
+
+def write_to_mysql(goods):
+    try:
+        conn = pymysql.connect(
+            host='localhost',
+            user='root',
+            password='123456',
+            database='pricecompare',
+            charset='utf8mb4'
+        )
+        cursor = conn.cursor()
+
+        desc = goods.get('goods_name', '暂无描述')
+        img = goods.get('image_url', '')
+        if img and not img.startswith('http'):
+            img = 'https:' + img if img.startswith('//') else img
+        category = '未分类'
+        # 品牌名优先用goods['brand_name']，没有则用'拼多多'
+        brand_name = goods.get('brand_name') or '拼多多'
+        print(f"[DEBUG] 品牌名: {brand_name}")
+        cursor.execute("SELECT id FROM brands WHERE name=%s", (brand_name,))
+        brand_result = cursor.fetchone()
+        if brand_result:
+            brand_id = brand_result[0]
+            print(f"[DEBUG] 品牌已存在, brand_id: {brand_id}")
+        else:
+            cursor.execute("INSERT INTO brands (name) VALUES (%s)", (brand_name,))
+            brand_id = cursor.lastrowid
+            print(f"[DEBUG] 新增品牌, brand_id: {brand_id}")
+
+        # is_hot/is_drop逻辑
+        try:
+            sales = int(goods.get('sales_tip', '0').replace('万', '0000').replace('+', ''))
+        except Exception as e:
+            print(f"[DEBUG] 销量转换异常: {e}")
+            sales = 0
+        is_hot = 1 if sales > 2000 else 0
+
+        # 价格处理
+        price_str = goods.get('min_group_price', '').replace('¥', '').replace('￥', '').replace('元', '').strip()
+        try:
+            price_yuan = float(price_str)
+        except Exception as e:
+            print(f"[DEBUG] 价格转换异常: {e}")
+            price_yuan = 0.0
+        is_drop = 1 if price_yuan < 100 else 0
+
+        # 查找或插入 products
+        cursor.execute("SELECT id FROM products WHERE title=%s", (goods['goods_name'],))
+        result = cursor.fetchone()
+        if result:
+            product_id = result[0]
+            print(f"[DEBUG] 商品已存在, product_id: {product_id}")
+        else:
+            cursor.execute(
+                """INSERT INTO products \
+                (title, `desc`, img, current_price, original_price, is_hot, is_drop, category, brand_id, created_at, updated_at, status)\
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), 1)""",
+                (goods['goods_name'], desc, img, price_yuan, price_yuan, is_hot, is_drop, category, brand_id)
+            )
+            product_id = cursor.lastrowid
+            print(f"[DEBUG] 新增商品, product_id: {product_id}")
+
+        # 插入 product_prices（避免重复）
+        price_date = goods.get('grab_time', '')[:10] if goods.get('grab_time') else datetime.now().strftime('%Y-%m-%d')
+        url = f"https://mobile.yangkeduo.com/goods.html?goods_id={goods['goods_id']}"
+        cursor.execute(
+            "SELECT id FROM product_prices WHERE product_id=%s AND platform=%s AND date=%s",
+            (product_id, '拼多多', price_date)
+        )
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO product_prices (product_id, platform, price, date, url, created_at) VALUES (%s, %s, %s, %s, %s, NOW())",
+                (product_id, '拼多多', round(price_yuan, 2), price_date, url)
+            )
+            print(f"[DEBUG] 新增价格, product_id: {product_id}, price: {price_yuan}, date: {price_date}")
+        else:
+            print(f"[DEBUG] 价格已存在, product_id: {product_id}, date: {price_date}")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print(f"[DEBUG] 数据库写入完成: {goods['goods_name']}")
+    except Exception as e:
+        print(f"[ERROR] 数据库写入异常: {e}")
+
+def main():
+    """主函数"""
+    print("开始运行拼多多爬虫...")
+    print("注意：拼多多需要登录才能正常搜索商品")
+    print("-" * 50)
+    
+    # 获取搜索关键词
+    keyword = input("请输入搜索关键词（默认：手机）: ").strip() or "手机"
+    
+    # 获取商品数量
+    try:
+        size = int(input("请输入要采集的商品数量（默认：10）: ").strip() or "10")
+    except:
+        size = 10
+    
+    print(f"开始搜索关键词: {keyword}，目标数量: {size}")
+    
+    # 使用登录状态搜索商品
+    goods_list = search_goods_with_login(keyword, page=1, size=size)
+    print(f'共采集到{len(goods_list)}个商品')
+    
+    if not goods_list:
+        print("没有商品数据")
+        return
+        
+    for idx, goods in enumerate(goods_list, 1):
+        print(f"\n商品{idx}: {goods['goods_name']}")
+        print(f"  价格: {goods['min_group_price']}元")
+        print(f"  销量: {goods['sales_tip']}")
+        print(f"  图片: {goods['image_url']}")
+        print(f"  商品ID: {goods['goods_id']}")
+        # 采集评论
+        comments = get_comments(goods['goods_id'], page=1, size=3)
+        print("  评论:")
+        for cidx, c in enumerate(comments, 1):
+            print(f"    {cidx}. {c['nickname']}：{c['content']}（{c['created_at']}）")
+        time.sleep(random.uniform(1, 2))  # 随机延迟
+        # 新增：写入数据库
+        write_to_mysql(goods)
+    print("已写入商品数据到数据库 products 和 product_prices 表。")
+
+# 直接执行主函数
+if __name__ == '__main__':
+    main()
+else:
+    # 当作为模块导入时也执行主函数
+    main()

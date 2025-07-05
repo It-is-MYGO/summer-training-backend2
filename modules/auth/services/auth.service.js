@@ -5,7 +5,7 @@ const { pool } = require('../../../lib/database/connection');
 
 class AuthService {
   async register(userData) {
-    // 检查邮箱是否已存在
+    // 检查邮箱是否已存在  邮箱唯一性检查
     const existEmailUser = await userRepository.findByEmail(userData.email);
     if (existEmailUser) {
       const error = new Error('邮箱已被注册');
@@ -13,12 +13,13 @@ class AuthService {
       error.isBusinessError = true;
       throw error;
     }
-    // 直接存储明文密码，isadmin 默认为 0
+    // 直接存储明文密码，isadmin 默认为 0 创建用户
     const userId = await userRepository.createUser(userData.username, userData.password, userData.email, 0);
     return userId;
   }
 
   async login(username, password) {
+    // 查询用户是否存在
     const user = await userRepository.findByUsername(username);
     console.log('数据库查到的密码:', user && user.password, '前端传来的密码:', password);
     console.log('数据库查到的完整用户对象:', user);
@@ -42,8 +43,10 @@ class AuthService {
       error.isBusinessError = true;
       throw error;
     }
+    // 返回用户信息
     const userResponse = { id: user.id, username: user.username, email: user.email, isadmin: user.isadmin, avatar: user.avatar };
     console.log('返回给前端的用户对象:', userResponse);
+    // 返回用户信息和token
     return {
       user: userResponse,
       token: jwt.sign({ id: user.id, username: user.username, isadmin: user.isadmin }, JWT.SECRET_KEY, { expiresIn: JWT.EXPIRES_IN })

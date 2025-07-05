@@ -155,5 +155,19 @@ module.exports = {
       [status, brandId]
     );
     return result;
+  },
+
+  // 获取商品分类分布数据
+  async getCategoryDistribution() {
+    const [rows] = await pool.query(`
+      SELECT 
+        COALESCE(category, '未分类') as category,
+        COUNT(*) as count
+      FROM products 
+      WHERE status = 1
+      GROUP BY category
+      ORDER BY count DESC
+    `);
+    return rows;
   }
 };

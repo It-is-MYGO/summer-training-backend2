@@ -8,6 +8,73 @@ from datetime import datetime
 import re
 import pymysql
 
+# 商品分类关键词映射 - 最终优化版本，解决关键词冲突
+CATEGORY_KEYWORDS = {
+    '手机数码': ['手机', 'iPhone', '华为', '小米', 'OPPO', 'vivo', '三星', '魅族', '一加', 'realme', 'iQOO', '荣耀', '红米', '苹果', '智能手机', '平板', 'iPad', '电脑', '笔记本', 'MacBook', 'ThinkPad', '戴尔', '联想', '华硕', '惠普', '数码', '相机', '单反', '微单', '摄像机', '耳机', '音响', '蓝牙耳机', '无线耳机', '充电器', '数据线', '充电宝', '移动电源', '智能手表', '手环', '数码产品'],
+    '服装鞋帽': ['衣服', '上衣', '裤子', '裙子', '外套', '羽绒服', '棉服', '卫衣', 'T恤', '衬衫', '牛仔裤', '运动裤', '休闲裤', '西装', '礼服', '内衣', '内裤', '袜子', '鞋子', '运动鞋', '跑鞋', '篮球鞋', '足球鞋', '帆布鞋', '皮鞋', '凉鞋', '拖鞋', '靴子', '帽子', '棒球帽', '鸭舌帽', '毛线帽', '围巾', '手套', '腰带', '包包', '背包', '手提包', '钱包', '双肩包', '服装', '男装', '女装', '童装', '时尚'],
+    '运动户外': ['运动', '健身', '跑步', '篮球', '足球', '羽毛球', '乒乓球', '网球', '游泳', '瑜伽', '户外', '登山', '徒步', '露营', '钓鱼', '骑行', '滑雪', '滑板', '轮滑', '健身器材', '哑铃', '跑步机', '动感单车', '瑜伽垫', '运动服', '运动裤', '运动袜', '护具', '护膝', '护腕', '护肘', '头盔', '手套', '运动装备', '户外装备', '体育用品'],
+    '家居生活': ['家具', '沙发', '床', '桌子', '椅子', '柜子', '衣柜', '书柜', '鞋柜', '茶几', '电视柜', '餐桌', '书桌', '办公桌', '床垫', '枕头', '被子', '床单', '被套', '枕套', '毛巾', '浴巾', '浴袍', '家居', '家装', '装饰', '摆件', '花瓶', '相框', '地毯', '窗帘', '灯具', '台灯', '吊灯', '壁灯', '吸顶灯', '家居用品'],
+    '食品饮料': ['零食', '饼干', '薯片', '糖果', '巧克力', '坚果', '瓜子', '花生', '核桃', '杏仁', '腰果', '开心果', '饮料', '可乐', '雪碧', '果汁', '奶茶', '咖啡', '茶', '矿泉水', '纯净水', '牛奶', '酸奶', '面包', '蛋糕', '月饼', '粽子', '方便面', '火腿肠', '罐头', '调味品', '酱油', '醋', '盐', '糖', '油', '米', '面', '面条', '食品', '零食', '小吃', '饮品'],
+    '母婴用品': ['尿不湿', '纸尿裤', '湿巾', '奶瓶', '奶嘴', '吸奶器', '婴儿车', '婴儿床', '摇篮', '玩具', '积木', '拼图', '毛绒玩具', '益智玩具', '早教', '绘本', '故事书', '婴儿服', '连体衣', '爬服', '围嘴', '口水巾', '润肤露', '护臀膏', '母婴', '婴儿', '宝宝', '儿童', '幼儿', '母婴用品'],
+    '美妆护肤': ['护肤品', '洗面奶', '爽肤水', '精华液', '面霜', '乳液', '眼霜', '面膜', '防晒霜', '隔离霜', '粉底液', 'BB霜', 'CC霜', '遮瑕膏', '散粉', '定妆粉', '腮红', '眼影', '眼线笔', '睫毛膏', '眉笔', '口红', '唇膏', '唇彩', '指甲油', '香水', '护发素', '发膜', '精油', '美容仪', '化妆刷', '美妆蛋', '美妆', '护肤', '化妆品', '彩妆'],
+    '图书音像': ['图书', '小说', '文学', '历史', '哲学', '心理学', '经济学', '管理学', '计算机', '编程', '技术', '教材', '教辅', '考试', '英语', '数学', '语文', '物理', '化学', '生物', '地理', '政治', '音乐', 'CD', 'DVD', '蓝光', '电影', '电视剧', '纪录片', '动画', '游戏', '手柄', '键盘', '鼠标', '显示器', '音箱', '书籍', '杂志', '音像制品'],
+    '汽车用品': ['汽车', '轮胎', '机油', '机滤', '空滤', '汽滤', '刹车片', '刹车盘', '火花塞', '电瓶', '蓄电池', '雨刷', '雨刮器', '车灯', '大灯', '尾灯', '转向灯', '雾灯', '车膜', '贴膜', '脚垫', '座套', '方向盘套', '挂件', '摆件', '导航', '行车记录仪', '倒车雷达', '倒车影像', '车载充电器', '车载冰箱', '车载吸尘器', '汽车配件', '汽配'],
+    '医药保健': ['药品', '感冒药', '退烧药', '消炎药', '止痛药', '维生素', '钙片', '鱼油', '蛋白粉', '保健品', '营养品', '减肥药', '减肥茶', '减肥产品', '医疗器械', '血压计', '血糖仪', '体温计', '听诊器', '按摩器', '按摩椅', '按摩垫', '理疗仪', '艾灸', '拔罐', '刮痧', '针灸', '中药', '中药材', '中成药', '西药', '处方药', '非处方药', '医药', '保健', '医疗']
+}
+
+def get_category_from_title(title):
+    """
+    根据商品标题智能识别商品分类
+    """
+    if not title:
+        return '未分类'
+    
+    title_lower = title.lower()
+    
+    # 统计每个分类的匹配关键词数量
+    category_scores = {}
+    
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        score = 0
+        for keyword in keywords:
+            if keyword.lower() in title_lower:
+                score += 1
+        if score > 0:
+            category_scores[category] = score
+    
+    # 返回得分最高的分类
+    if category_scores:
+        best_category = max(category_scores.items(), key=lambda x: x[1])[0]
+        return best_category
+    
+    return '未分类'
+
+def get_category_from_page(tree, page_type):
+    """
+    从页面元素中提取分类信息
+    """
+    try:
+        if page_type == "product":
+            # 尝试从面包屑导航获取分类
+            breadcrumb = tree.xpath('//div[@class="breadcrumb"]//text()')
+            if breadcrumb:
+                breadcrumb_text = ''.join(breadcrumb).strip()
+                # 从面包屑中提取分类
+                for category in CATEGORY_KEYWORDS.keys():
+                    if category in breadcrumb_text:
+                        return category
+            
+            # 尝试从页面标题获取分类
+            page_title = tree.xpath('//title/text()')
+            if page_title:
+                title_text = page_title[0].strip()
+                return get_category_from_title(title_text)
+        
+        return '未分类'
+    except Exception as e:
+        print(f"提取页面分类时出错: {str(e)}")
+        return '未分类'
+
 def crawler(goods_word):
     goods_info = []
     bro = avoid_check()
@@ -50,7 +117,11 @@ def crawler(goods_word):
                 btn_next = bro.find_element('xpath', '//a[contains(text(),"下一页")]')
             
             url = btn_next.get_attribute('href')
-            bro.get(url)
+            if url:
+                bro.get(url)
+            else:
+                print("下一页链接为空，停止翻页")
+                break
             sleep(random.uniform(2, 4))
             
             # 滚动加载
@@ -125,6 +196,9 @@ def crawler(goods_word):
                 goods_link = li.xpath('.//div[contains(@class, "title-selling-point")]/a/@href')[0]
                 goods_link = 'https:' + goods_link if not goods_link.startswith('http') else goods_link
             
+            # 智能识别商品分类
+            category = get_category_from_title(goods_title)
+            
             # 添加到结果列表
             goods_info.append({
                 'goods_img': goods_img,
@@ -135,7 +209,8 @@ def crawler(goods_word):
                 'shop_platform': '苏宁',
                 'goods_link': goods_link,
                 'grab_time': time.strftime('%Y-%m-%d %H:%M', time.localtime()),
-                'page_type': page_type  # 添加页面类型标识
+                'page_type': page_type,  # 添加页面类型标识
+                'category': category
             })
         except Exception as e:
             print(f"解析商品时出错: {str(e)}")
@@ -163,7 +238,7 @@ def save_to_csv(data, filename='suning_products.csv'):
     standard_fields = [
         'goods_img', 'goods_title', 'goods_price', 
         'goods_sales', 'shop_title', 'shop_platform',
-        'goods_link', 'grab_time', 'page_type'
+        'goods_link', 'grab_time', 'page_type', 'category'
     ]
     
     try:
@@ -194,7 +269,8 @@ def save_to_csv(data, filename='suning_products.csv'):
                         'shop_platform': row.get('shop_platform', '未知平台'),
                         'goods_link': clean_url(row.get('goods_link', '')),
                         'grab_time': row.get('grab_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                        'page_type': row.get('page_type', 'product')
+                        'page_type': row.get('page_type', 'product'),
+                        'category': row.get('category', '未分类')
                     }
                     
                     # 确保所有字段都是字符串且正确处理None值
@@ -265,6 +341,20 @@ def clean_sales(sales):
     sales = re.sub(r'[^0-9]', '', sales)  # 只保留数字
     return sales if sales else '0'
 
+def analyze_category_distribution(goods_list):
+    """分析商品分类分布"""
+    category_count = {}
+    for item in goods_list:
+        category = item.get('category', '未分类')
+        category_count[category] = category_count.get(category, 0) + 1
+    
+    print("\n📊 商品分类分布:")
+    for category, count in sorted(category_count.items(), key=lambda x: x[1], reverse=True):
+        percentage = (count / len(goods_list)) * 100
+        print(f"  {category}: {count} 件 ({percentage:.1f}%)")
+    
+    return category_count
+
 def write_to_mysql(goods):
     conn = pymysql.connect(
         host='localhost',
@@ -281,7 +371,7 @@ def write_to_mysql(goods):
     if img and not img.startswith('http'):
         img = 'https:' + img if img.startswith('//') else img
     # category
-    category = '未分类'
+    category = goods.get('category', '未分类')
     # 品牌名用店铺名
     brand_name = goods.get('shop_title', '未知品牌')
     cursor.execute("SELECT id FROM brands WHERE name=%s", (brand_name,))
@@ -341,9 +431,14 @@ if __name__ == "__main__":
         sn_goods_info = crawler(goods_word=word)
         save_to_csv(sn_goods_info, filename=f'suning_products_{word}.csv')
         print(f"共获取 {len(sn_goods_info)} 条商品数据 for {word}")
+        
+        # 分析分类分布
+        analyze_category_distribution(sn_goods_info)
+        
         for idx, item in enumerate(sn_goods_info[:3], 1):  # 打印前3条作为示例
             print(f"\n商品 {idx}:")
             print(f"类型: {'商品页' if item['page_type'] == 'product' else '品牌页'}")
+            print(f"分类: {item['category']}")
             print(f"标题: {item['goods_title']}")
             print(f"价格: {item['goods_price']}")
             print(f"销量: {item['goods_sales']}")

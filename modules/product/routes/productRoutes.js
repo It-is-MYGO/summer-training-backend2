@@ -10,6 +10,7 @@ router.get('/drops', productController.getDropProducts);
 router.get('/brands', productController.getBrands);
 router.get('/brands/:brandId', productController.getProductsByBrand);
 router.get('/search', productController.search);
+router.get('/category-distribution', productController.getCategoryDistribution);
 router.get('/:id/price-history', productController.getPriceHistory);
 router.get('/:id/platform-prices', productController.getPlatformPrices);
 router.get('/:id/chart-data', productController.getChartData);
