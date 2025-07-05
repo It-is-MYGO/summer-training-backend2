@@ -8,11 +8,14 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 import pickle
 import os
+import csv
+from datetime import datetime
 
 # 多个User-Agent轮换
 USER_AGENTS = [
@@ -63,7 +66,7 @@ def manual_login_guide():
     print("拼多多手动登录指导")
     print("="*60)
     print("\n步骤1：打开浏览器")
-    print("1. 启动Chrome浏览器")
+    print("1. 启动Edge浏览器")
     print("2. 访问 https://mobile.yangkeduo.com")
     print("\n步骤2：登录账号")
     print("1. 点击右上角的'登录'按钮")
@@ -99,24 +102,23 @@ def get_random_headers():
         'Pragma': 'no-cache',
     }
 
-def search_goods_with_login(keyword, page=1, size=10):
-    """使用登录状态搜索商品"""
+def search_goods_with_login(keyword, page=1, size=45):
+    """使用登录状态搜索商品（Edge驱动）"""
     print(f"开始搜索商品: {keyword}")
     
     try:
-        # 配置Chrome选项
-        chrome_options = Options()
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        # 配置Edge选项
+        edge_options = EdgeOptions()
+        edge_options.add_argument('--no-sandbox')
+        edge_options.add_argument('--disable-dev-shm-usage')
+        edge_options.add_argument('--disable-gpu')
+        edge_options.add_argument('--window-size=1920,1080')
+        edge_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        edge_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        edge_options.add_experimental_option('useAutomationExtension', False)
         
-        # 添加反检测
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        driver = webdriver.Chrome(options=chrome_options)
+        driver_path = "msedgedriver.exe"  # Edge驱动路径
+        driver = webdriver.Edge(service=EdgeService(driver_path), options=edge_options)
         
         # 执行反检测脚本
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -242,30 +244,9 @@ def extract_goods_from_search_page(driver, size):
     
     print("开始查找商品元素...")
     
-    # 尝试多种选择器来找到商品
+    # 只保留有效的选择器
     selectors_to_try = [
         '._3glhOBhU',  # PDD商品元素的主要选择器
-        '.product-item',
-        '.goods-item', 
-        '.item-card',
-        '[class*="product"]',
-        '[class*="goods"]',
-        '[class*="item"]',
-        'li[class*="product"]',
-        'div[class*="product"]',
-        'a[href*="goods"]',
-        'img[src*="goods"]',
-        '.search-result-item',
-        '.product-card',
-        '.goods-card',
-        '.product-list-item',
-        '.goods-list-item',
-        '[data-testid*="product"]',
-        '[data-testid*="goods"]',
-        '.list-item',
-        '.card',
-        'li',
-        'div[class*="card"]',
     ]
     
     found_elements = False
@@ -276,20 +257,15 @@ def extract_goods_from_search_page(driver, size):
                 print(f"✅ 使用选择器 '{selector}' 找到 {len(elements)} 个元素")
                 found_elements = True
                 
-                # 检查这些元素是否包含商品信息
+                # 提取商品信息
                 valid_elements = 0
                 for i, element in enumerate(elements[:size]):
                     try:
-                        # 检查元素是否包含价格信息
-                        element_text = element.text.lower()
-                        if '¥' in element_text or '￥' in element_text or '元' in element_text:
-                            goods = extract_goods_from_element(element)
-                            if goods and goods['goods_name'] != "未知商品":
-                                goods_list.append(goods)
-                                print(f"  📦 商品 {i+1}: {goods['goods_name']} - {goods['min_group_price']}")
-                                valid_elements += 1
-                        else:
-                            print(f"  ⚠️ 元素 {i+1} 不包含价格信息，跳过")
+                        goods = extract_goods_from_element(element)
+                        if goods and goods['goods_title'] != "未知商品":
+                            goods_list.append(goods)
+                            print(f"  📦 商品 {i+1}: {goods['goods_title']} - {goods['goods_price']}")
+                            valid_elements += 1
                     except Exception as e:
                         print(f"  ❌ 提取商品 {i+1} 时出错: {e}")
                         continue
@@ -323,12 +299,15 @@ def extract_goods_from_search_page(driver, size):
 def extract_goods_from_element(element):
     """从Selenium元素中提取商品信息"""
     try:
-        # 查找商品名称 - PDD特定的选择器
+        # 获取整个商品卡片的文本内容
+        element_text = element.text.strip()
+        print(f"[调试] 商品卡片内容：{element_text}")
+        
+        # 查找商品名称 - 只保留有效的选择器
         name_selectors = [
             '._3ANzdjkc',  # PDD商品标题的主要选择器
             'h3', 'h4', 'h5',
             '[class*="title"]', '[class*="name"]',
-            'span[class*="title"]', 'span[class*="name"]',
         ]
         
         name = "未知商品"
@@ -337,15 +316,28 @@ def extract_goods_from_element(element):
                 name_elem = element.find_element(By.CSS_SELECTOR, selector)
                 name = name_elem.text.strip()
                 if name and len(name) > 2:
+                    print(f"[调试] 使用选择器 {selector} 找到商品名称：{name}")
                     break
             except:
                 continue
         
-        # 查找价格 - PDD特定的选择器
+        # 如果选择器都失败了，尝试从整个元素文本中提取商品名称
+        if name == "未知商品":
+            # 分析元素文本，提取商品名称
+            lines = element_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                # 跳过价格、销量等行
+                if (line and len(line) > 3 and len(line) < 100 and 
+                    not any(keyword in line for keyword in ['¥', '￥', '元', '块', '售', '件', '好评', '分期', '发票'])):
+                    name = line
+                    print(f"[调试] 从文本中提取商品名称：{name}")
+                    break
+        
+        # 查找价格 - 只保留有效的选择器
         price_selectors = [
             '._3_U04GgA',  # PDD价格的主要选择器
             '[class*="price"]',
-            'span:contains("¥")', 'span:contains("￥")',
         ]
         
         price = "价格未知"
@@ -355,26 +347,46 @@ def extract_goods_from_element(element):
                 price_text = price_elem.text.strip()
                 if '¥' in price_text or '￥' in price_text or re.search(r'\d+\.?\d*', price_text):
                     price = price_text
+                    print(f"[调试] 使用选择器 {selector} 找到价格：{price}")
                     break
             except:
                 continue
         
-        # 查找销量 - PDD特定的选择器
+        # 如果选择器都失败了，尝试从文本中提取价格
+        if price == "价格未知":
+            # 使用正则表达式从文本中提取价格
+            price_match = re.search(r'¥\s*(\d+\.?\d*)', element_text)
+            if price_match:
+                price = f"¥{price_match.group(1)}"
+                print(f"[调试] 从文本中提取价格：{price}")
+        
+        # 优化销量提取逻辑 - 只保留有效的选择器
+        sales = "销量未知"
         sales_selectors = [
-            '._32q8gNKM',  # PDD销量的主要选择器
+            '._32q8gNKM',
             '[class*="sales"]',
             '[class*="sold"]',
         ]
-        
-        sales = "销量未知"
         for selector in sales_selectors:
             try:
-                sales_elem = element.find_element(By.CSS_SELECTOR, selector)
-                sales = sales_elem.text.strip()
-                if sales and len(sales) > 0:
+                elements = element.find_elements(By.CSS_SELECTOR, selector)
+                for elem in elements:
+                    text = elem.text.strip()
+                    if any(k in text for k in ['售', '件', '销量']):
+                        sales = text
+                        print(f"[调试] 使用选择器 {selector} 找到销量：{sales}")
+                        break
+                if sales != "销量未知":
                     break
             except:
                 continue
+        
+        # 正则兜底 - 从整个元素文本中提取销量
+        if sales == "销量未知":
+            match = re.search(r'(总售|已拼|已售|销量)[^\d]*(\d+[万\+]*)(件)?', element_text)
+            if match:
+                sales = match.group(0)
+                print(f"[调试] 从文本中提取销量：{sales}")
         
         # 查找图片
         try:
@@ -394,13 +406,24 @@ def extract_goods_from_element(element):
         except:
             pass
         
-        return {
+        # 构建商品信息
+        goods_info = {
             'goods_id': goods_id or f"temp_{random.randint(1000, 9999)}",
-            'goods_name': name,
-            'min_group_price': price,
-            'sales_tip': sales,
-            'image_url': img_url,
+            'goods_title': clean_title(name),
+            'goods_price': clean_price(price),
+            'goods_sales': clean_sales(sales),
+            'goods_img': clean_url(img_url),
+            'shop_title': '拼多多自营',
+            'shop_platform': '拼多多',
+            'goods_link': clean_url(f'https://mobile.yangkeduo.com/goods.html?goods_id={goods_id}' if goods_id else ''),
+            'grab_time': datetime.now().strftime('%Y-%m-%d %H:%M'),
+            'page_type': 'product',
+            'search_keyword': '',
+            'brand': clean_brand(extract_brand_from_title(name))
         }
+        
+        print(f"[调试] 提取的商品信息：{goods_info}")
+        return goods_info
         
     except Exception as e:
         print(f"提取元素信息时出错: {e}")
@@ -435,10 +458,17 @@ def extract_goods_from_page_source(page_source, size):
             if price_match:
                 goods = {
                     'goods_id': f"temp_{random.randint(1000, 9999)}",
-                    'goods_name': name,
-                    'min_group_price': f"¥{price_match.group(1)}",
-                    'sales_tip': "销量未知",
-                    'image_url': "",
+                    'goods_title': clean_title(name),
+                    'goods_price': clean_price(price_match.group(1)),
+                    'goods_sales': "销量未知",
+                    'goods_img': "",
+                    'shop_title': '拼多多自营',
+                    'shop_platform': '拼多多',
+                    'goods_link': '',
+                    'grab_time': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                    'page_type': 'product',
+                    'search_keyword': '',
+                    'brand': clean_brand(extract_brand_from_title(name))
                 }
                 goods_list.append(goods)
                 
@@ -447,34 +477,142 @@ def extract_goods_from_page_source(page_source, size):
     
     return goods_list
 
-def get_comments(goods_id, page=1, size=10):
-    """获取商品评论"""
+
+
+def clean_price_pdd(price):
+    """提取数字并保留两位小数，单位为元（如299.00）"""
+    if not price:
+        return ''
+    price = str(price)
+    price_num = ''.join(c for c in price if c.isdigit() or c == '.')
     try:
-        url = f'https://apiv3.yangkeduo.com/reviews/{goods_id}/list'
-        params = {
-            'size': size,
-            'page': page,
-            'pdduid': 0,
-        }
-        headers = get_random_headers()
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        
-        if resp.status_code != 200:
-            print(f"获取评论失败: {resp.text}")
-            return []
-            
-        data = resp.json()
-        comments = []
-        for c in data.get('reviews', []):
-            comments.append({
-                'content': c.get('content'),
-                'nickname': c.get('nickname'),
-                'created_at': c.get('created_at'),
-            })
-        return comments
+        price_float = float(price_num)
+        return f"{price_float:.2f}"
+    except:
+        return ''
+
+def clean_sales_pdd(sales):
+    """只保留数字，去掉+、件等"""
+    if not sales:
+        return '0'
+    sales = str(sales)
+    sales_num = ''.join(c for c in sales if c.isdigit())
+    return sales_num or '0'
+
+def clean_text_pdd(text, max_length=200):
+    if not text:
+        return ''
+    text = str(text).replace('\n', '').replace('\r', '').strip()
+    if len(text) > max_length:
+        text = text[:max_length-3] + '...'
+    return text
+
+def save_to_csv_pdd(data, filename='pdd_products.csv', search_keyword=''):
+    """
+    将PDD商品数据保存为标准CSV文件，字段顺序：
+    goods_img, goods_title, goods_price, goods_sales, shop_title, shop_platform, goods_link, grab_time, page_type, search_keyword
+    """
+    if not data:
+        print("没有数据可保存")
+        return False
+    
+    standard_fields = [
+        'goods_img', 'goods_title', 'goods_price', 'goods_sales',
+        'shop_title', 'shop_platform', 'goods_link', 'grab_time',
+        'page_type', 'search_keyword'
+    ]
+    
+    try:
+        with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=standard_fields, quoting=csv.QUOTE_ALL)
+            writer.writeheader()
+            success_count = 0
+            for row in data:
+                mapped = {
+                    'goods_img': clean_text_pdd(row.get('goods_img', '')),
+                    'goods_title': clean_text_pdd(row.get('goods_title', '')),
+                    'goods_price': clean_text_pdd(clean_price_pdd(row.get('goods_price', ''))),
+                    'goods_sales': clean_text_pdd(clean_sales_pdd(row.get('goods_sales', ''))),
+                    'shop_title': clean_text_pdd(row.get('shop_title', '拼多多自营'), 50),
+                    'shop_platform': clean_text_pdd('拼多多'),
+                    'goods_link': clean_text_pdd(row.get('goods_link', '')),
+                    'grab_time': clean_text_pdd(row.get('grab_time', datetime.now().strftime('%Y-%m-%d %H:%M'))),
+                    'page_type': clean_text_pdd('product'),
+                    'search_keyword': clean_text_pdd(search_keyword, 50)
+                }
+                writer.writerow(mapped)
+                success_count += 1
+        print(f"✅ 成功保存 {success_count}/{len(data)} 条数据到 {filename}")
+        return True
     except Exception as e:
-        print(f"获取评论时出错: {e}")
-        return []
+        print(f"❌ 保存CSV文件时出错: {e}")
+        return False
+
+def extract_brand_from_title(title):
+    """从商品标题中提取品牌"""
+    if not title:
+        return '未知'
+    
+    # 常见品牌关键词
+    brand_keywords = [
+        '苹果', 'iPhone', '华为', 'HUAWEI', '小米', 'MI', 'OPPO', 'vivo', '三星', 'SAMSUNG',
+        '荣耀', 'HONOR', '联想', 'Lenovo', 'realme', '一加', 'OnePlus', '魅族', 'Meizu',
+        '努比亚', 'nubia', '中兴', 'ZTE', '锤子', 'Smartisan', '黑鲨', 'Black Shark',
+        '李宁', 'NIKE', '阿迪达斯', 'Adidas', '安踏', 'Anta', '特步', 'Xtep',
+        '361度', '361°', '匹克', 'PEAK', '鸿星尔克', 'ERKE', '乔丹', 'QIAODAN'
+    ]
+    
+    title_lower = title.lower()
+    for brand in brand_keywords:
+        if brand.lower() in title_lower:
+            return brand
+    
+    return '未知'
+
+def clean_title(text, max_length=127):
+    """清洗商品标题"""
+    if not text:
+        return ''
+    # 去除HTML标签和特殊字符
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'[^\w\s\u4e00-\u9fff\-\.]', '', text)
+    text = ' '.join(text.split())  # 去除多余空格
+    return text[:max_length]
+
+def clean_price(price_text):
+    """清洗价格"""
+    if not price_text:
+        return 0.0
+    try:
+        # 提取数字和小数点
+        price_num = re.sub(r'[^\d\.]', '', str(price_text))
+        price_float = float(price_num)
+        return round(price_float, 2)
+    except (ValueError, TypeError):
+        return 0.0
+
+def clean_sales(sales_text):
+    """清洗销量"""
+    if not sales_text:
+        return '0'
+    # 只保留数字
+    sales_num = re.sub(r'[^\d]', '', str(sales_text))
+    return sales_num if sales_num else '0'
+
+def clean_brand(brand):
+    """清洗品牌"""
+    if not brand or brand == '未知':
+        return '未知'
+    return brand.strip()
+
+def clean_url(url):
+    """清洗URL"""
+    if not url:
+        return ''
+    url = str(url).strip()
+    if not url.startswith(('http://', 'https://')):
+        return f'https:{url}' if url.startswith('//') else f'https://{url}'
+    return url
 
 def main():
     """主函数"""
@@ -489,7 +627,7 @@ def main():
     try:
         size = int(input("请输入要采集的商品数量（默认：10）: ").strip() or "10")
     except:
-        size = 10
+        size = 30
     
     print(f"开始搜索关键词: {keyword}，目标数量: {size}")
     
@@ -502,17 +640,15 @@ def main():
         return
         
     for idx, goods in enumerate(goods_list, 1):
-        print(f"\n商品{idx}: {goods['goods_name']}")
-        print(f"  价格: {goods['min_group_price']}元")
-        print(f"  销量: {goods['sales_tip']}")
-        print(f"  图片: {goods['image_url']}")
+        print(f"\n商品{idx}: {goods['goods_title']}")
+        print(f"  价格: {goods['goods_price']}元")
+        print(f"  销量: {goods['goods_sales']}")
+        print(f"  图片: {goods['goods_img']}")
         print(f"  商品ID: {goods['goods_id']}")
-        # 采集评论
-        comments = get_comments(goods['goods_id'], page=1, size=3)
-        print("  评论:")
-        for cidx, c in enumerate(comments, 1):
-            print(f"    {cidx}. {c['nickname']}：{c['content']}（{c['created_at']}）")
         time.sleep(random.uniform(1, 2))  # 随机延迟
+    
+    # 保存为CSV
+    save_to_csv_pdd(goods_list, filename='pdd_products.csv', search_keyword=keyword)
 
 # 直接执行主函数
 if __name__ == '__main__':
