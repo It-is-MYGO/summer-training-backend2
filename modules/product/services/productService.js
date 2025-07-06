@@ -185,20 +185,51 @@ module.exports = {
     try {
       const distribution = await productRepository.getCategoryDistribution();
       
-      // 格式化数据，确保所有分类都有数据
+      // 分类编号到中文名称映射
+      const categoryMap = {
+        0: '手机数码',
+        1: '服装鞋帽',
+        2: '运动户外',
+        3: '家居生活',
+        4: '食品饮料',
+        5: '母婴用品',
+        6: '美妆护肤',
+        7: '图书音像',
+        8: '汽车用品',
+        9: '医药保健',
+        10: '未分类',
+        '手机数码': '手机数码',
+        '服装鞋帽': '服装鞋帽',
+        '运动户外': '运动户外',
+        '家居生活': '家居生活',
+        '食品饮料': '食品饮料',
+        '母婴用品': '母婴用品',
+        '美妆护肤': '美妆护肤',
+        '图书音像': '图书音像',
+        '汽车用品': '汽车用品',
+        '医药保健': '医药保健',
+        '未分类': '未分类'
+      };
+
+      // 保证所有分类都在，没数据的补0
       const allCategories = [
         '手机数码', '服装鞋帽', '运动户外', '家居生活', '食品饮料',
         '母婴用品', '美妆护肤', '图书音像', '汽车用品', '医药保健', '未分类'
       ];
-      
-      const categoryMap = new Map(distribution.map(item => [item.category, item.count]));
-      
-      const formattedData = allCategories.map(category => ({
+
+      // 先转成对象方便查找
+      const categoryMapResult = {};
+      distribution.forEach(item => {
+        // 映射为中文名称
+        const name = categoryMap[item.category] || '未分类';
+        categoryMapResult[name] = item.count;
+      });
+
+      // 返回数组
+      return allCategories.map(category => ({
         category,
-        count: categoryMap.get(category) || 0
+        count: categoryMapResult[category] || 0
       }));
-      
-      return formattedData;
     } catch (error) {
       console.error('获取分类分布失败:', error);
       throw new Error('获取分类分布失败');

@@ -72,17 +72,37 @@ module.exports = {
       const page = parseInt(req.query.page) || 1;
       const pageSize = parseInt(req.query.pageSize) || 12;
       const includeOffline = req.query.includeOffline === 'true';
+      const category = req.query.category;
+      const status = req.query.status;
       const offset = (page - 1) * pageSize;
 
       // 构建查询条件
-      const whereClause = includeOffline ? '' : 'WHERE p.status = 1';
-      const countWhereClause = includeOffline ? '' : 'WHERE status = 1';
+      let whereConditions = [];
+      let params = [];
+
+      if (!includeOffline) {
+        whereConditions.push('p.status = 1');
+      }
+
+      if (category) {
+        whereConditions.push('p.category = ?');
+        params.push(category);
+      }
+
+      if (status !== undefined && status !== '') {
+        whereConditions.push('p.status = ?');
+        params.push(parseInt(status));
+      }
+
+      const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
+      const countWhereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
 
       // 查询总数
-      const [countRows] = await pool.query(`SELECT COUNT(*) as count FROM products ${countWhereClause}`);
+      const [countRows] = await pool.query(`SELECT COUNT(*) as count FROM products p ${countWhereClause}`, params);
       const total = countRows[0].count;
 
       // 查询分页数据
+      const queryParams = [...params, pageSize, offset];
       const [rows] = await pool.query(
         `SELECT p.*, 
                 (SELECT MIN(pp.price) FROM product_prices pp WHERE pp.product_id = p.id) as price,
@@ -91,7 +111,7 @@ module.exports = {
          ${whereClause}
          ORDER BY p.id DESC
          LIMIT ? OFFSET ?`,
-        [pageSize, offset]
+        queryParams
       );
 
       res.json({
