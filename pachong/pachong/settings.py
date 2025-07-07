@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'pachong.wsgi.application'
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'pricecompare',
         'USER': 'root',
-        'PASSWORD': 'Whu@123456',
+        'PASSWORD': 'whu123456',
         'HOST': 'localhost', # 或你的数据库服务器IP
         'PORT': '3306',
         'OPTIONS': {
@@ -95,7 +95,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'pricecompare',
         'USER': 'root',
-        'PASSWORD': '123456',
+        'PASSWORD': 'whu123456',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
