@@ -770,7 +770,7 @@ def write_to_mysql(goods):
     conn = pymysql.connect(
         host='localhost',
         user='root',
-        password='123456',
+        password='whu123456',
         database='pricecompare',
         charset='utf8mb4'
     )

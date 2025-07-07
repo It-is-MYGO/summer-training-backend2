@@ -49,17 +49,29 @@ exports.deleteUser = async (req, res) => {
 // 获取用户活跃度分布
 exports.getActivityDistribution = async (req, res) => {
   try {
+    console.log('📊 获取用户活跃度分布...');
     const dist = await userRepository.getActivityDistribution();
+    console.log('✅ 活跃度分布数据:', dist);
+    
+    // 确保返回的数据不为null或undefined
+    const result = [
+      { name: '高活跃用户', value: dist.high || 0 },
+      { name: '中等活跃用户', value: dist.medium || 0 },
+      { name: '低活跃用户', value: dist.low || 0 },
+      { name: '新用户', value: dist.new_user || 0 }
+    ];
+    
     res.json({
-      data: [
-        { name: '高活跃用户', value: dist.high },
-        { name: '中等活跃用户', value: dist.medium },
-        { name: '低活跃用户', value: dist.low },
-        { name: '新用户', value: dist.new_user }
-      ]
+      success: true,
+      data: result
     });
   } catch (err) {
-    res.status(500).json({ message: '获取活跃度分布失败', error: err.message });
+    console.error('❌ 获取活跃度分布失败:', err);
+    res.status(500).json({ 
+      success: false,
+      message: '获取活跃度分布失败', 
+      error: err.message 
+    });
   }
 };
 
