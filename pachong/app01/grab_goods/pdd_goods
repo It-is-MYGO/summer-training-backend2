@@ -646,6 +646,3 @@ def main():
 # 直接执行主函数
 if __name__ == '__main__':
     main()
-else:
-    # 当作为模块导入时也执行主函数
-    main()
