@@ -85,8 +85,48 @@ module.exports = {
       }
 
       if (category) {
-        whereConditions.push('p.category = ?');
-        params.push(category);
+        if (category === '未分类') {
+          // 分类映射规则，与图表分析页保持一致
+          const categoryMap = {
+            0: '手机数码',
+            1: '服装鞋帽',
+            2: '运动户外',
+            3: '家居生活',
+            4: '食品饮料',
+            5: '母婴用品',
+            6: '美妆护肤',
+            7: '图书音像',
+            8: '汽车用品',
+            9: '医药保健',
+            10: '未分类',
+            '手机数码': '手机数码',
+            '服装鞋帽': '服装鞋帽',
+            '运动户外': '运动户外',
+            '家居生活': '家居生活',
+            '食品饮料': '食品饮料',
+            '母婴用品': '母婴用品',
+            '美妆护肤': '美妆护肤',
+            '图书音像': '图书音像',
+            '汽车用品': '汽车用品',
+            '医药保健': '医药保健',
+            '未分类': '未分类'
+          };
+          
+          // 筛选所有不在映射表中的分类，以及空值
+          const mappedCategories = Object.values(categoryMap);
+          const unmappedConditions = [];
+          unmappedConditions.push('(p.category IS NULL OR p.category = "" OR p.category = "null" OR p.category = "undefined")');
+          
+          // 添加所有不在映射表中的分类
+          unmappedConditions.push('p.category NOT IN (?)');
+          params.push(mappedCategories);
+          
+          whereConditions.push(`(${unmappedConditions.join(' OR ')})`);
+        } else {
+          // 对于标准分类，先尝试直接匹配
+          whereConditions.push('p.category = ?');
+          params.push(category);
+        }
       }
 
       if (status !== undefined && status !== '') {

@@ -161,11 +161,20 @@ module.exports = {
   async getCategoryDistribution() {
     const [rows] = await pool.query(`
       SELECT 
-        COALESCE(category, '未分类') as category,
+        CASE 
+          WHEN category IS NULL OR category = '' OR category = 'null' OR category = 'undefined' 
+          THEN '未分类' 
+          ELSE category 
+        END as category,
         COUNT(*) as count
       FROM products 
       WHERE status = 1
-      GROUP BY category
+      GROUP BY 
+        CASE 
+          WHEN category IS NULL OR category = '' OR category = 'null' OR category = 'undefined' 
+          THEN '未分类' 
+          ELSE category 
+        END
       ORDER BY count DESC
     `);
     return rows;
