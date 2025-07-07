@@ -142,10 +142,21 @@ async function checkAIConfig(req, res) {
   }
 }
 
+// 平台商品数量对比
+async function getPlatformComparison(req, res) {
+  try {
+    const data = await adminService.getPlatformComparison();
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取平台商品数量对比失败', error: error.message });
+  }
+}
+
 module.exports = {
   getPriceTrends,
   analyzePriceData,
   predictMarketTrend,
   generateSmartRecommendations,
-  checkAIConfig
+  checkAIConfig,
+  getPlatformComparison
 }; 

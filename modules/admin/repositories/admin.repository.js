@@ -123,21 +123,39 @@ async function getProductCategoryDistribution() {
   }
 }
 
-// 获取平台商品数量对比
+// 获取平台商品数量对比（按分类分组，基于所有商品最新价格）
 async function getPlatformComparison() {
   try {
     const query = `
       SELECT 
-        platform,
-        COUNT(DISTINCT product_id) as product_count
-      FROM product_prices 
-      WHERE date = CURDATE()
-      GROUP BY platform
-      ORDER BY product_count DESC
+        COALESCE(p.category, '未分类') as category,
+        platforms.platform,
+        COUNT(*) as product_count
+      FROM products p
+      LEFT JOIN (
+        SELECT product_id, platform
+        FROM (
+          SELECT product_id, platform,
+                 ROW_NUMBER() OVER (PARTITION BY product_id, platform ORDER BY date DESC, id DESC) as rn
+          FROM product_prices
+        ) t
+        WHERE rn = 1
+      ) platforms ON p.id = platforms.product_id
+      WHERE p.status = 1
+      GROUP BY category, platforms.platform
     `;
-    
     const [rows] = await pool.execute(query);
-    return rows;
+    // 整理为 {category, 京东, 天猫, 拼多多, 苏宁}
+    const categories = {};
+    rows.forEach(row => {
+      if (!categories[row.category]) {
+        categories[row.category] = { category: row.category, 京东: 0, 天猫: 0, 拼多多: 0, 苏宁: 0 };
+      }
+      if (row.platform) {
+        categories[row.category][row.platform] = row.product_count;
+      }
+    });
+    return Object.values(categories);
   } catch (error) {
     console.error('查询平台对比数据失败:', error);
     throw error;

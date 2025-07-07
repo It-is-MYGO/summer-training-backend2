@@ -27,4 +27,7 @@ router.post('/ai-smart-recommendations', authMiddleware, adminController.generat
 // 智谱AI配置检查
 router.get('/ai-config-check', authMiddleware, adminController.checkAIConfig);
 
+// 平台商品数量对比
+router.get('/platform-comparison', authMiddleware, adminController.getPlatformComparison);
+
 module.exports = router; 

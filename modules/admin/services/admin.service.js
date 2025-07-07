@@ -315,7 +315,18 @@ function comparePlatformPrices(priceData) {
   return insights;
 }
 
+// 平台商品数量对比
+async function getPlatformComparison() {
+  try {
+    return await adminRepository.getPlatformComparison();
+  } catch (error) {
+    console.error('获取平台商品数量对比失败:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getPriceTrends,
-  analyzePriceData
+  analyzePriceData,
+  getPlatformComparison
 }; 
