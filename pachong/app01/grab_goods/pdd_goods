@@ -625,7 +625,7 @@ def main():
     
     # 获取商品数量
     try:
-        size = int(input("请输入要采集的商品数量（默认：10）: ").strip() or "10")
+        size = int(input("请输入要采集的商品数量（默认：10）: ").strip() or "50")
     except:
         size = 30
     
