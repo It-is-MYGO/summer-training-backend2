@@ -1,5 +1,6 @@
 // 处理商品相关的业务逻辑（MySQL）
 const productRepository = require('../repositories/productRepository');
+const predictionService = require('./predictionService');
 
 module.exports = {
   async searchProducts(keyword) {
@@ -98,40 +99,12 @@ module.exports = {
   // 获取价格预测数据
   async getPricePrediction(id) {
     try {
-      const monthlyData = await productRepository.findMonthlyAverage(id);
-      
-      if (monthlyData.length < 3) {
-        return { prediction: '数据不足，无法预测' };
-      }
-
-      // 简单的线性回归预测
-      const recentData = monthlyData.slice(-6); // 最近6个月
-      const xValues = recentData.map((_, index) => index);
-      const yValues = recentData.map(item => item.avgPrice);
-
-      // 计算线性回归
-      const n = xValues.length;
-      const sumX = xValues.reduce((sum, x) => sum + x, 0);
-      const sumY = yValues.reduce((sum, y) => sum + y, 0);
-      const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
-      const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
-
-      const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-      const intercept = (sumY - slope * sumX) / n;
-
-      // 预测下个月价格
-      const nextMonth = n;
-      const predictedPrice = slope * nextMonth + intercept;
-
-      return {
-        currentTrend: slope > 0 ? '上涨' : slope < 0 ? '下跌' : '稳定',
-        predictedPrice: Math.round(predictedPrice),
-        confidence: Math.abs(slope) > 50 ? '高' : Math.abs(slope) > 20 ? '中' : '低',
-        slope: slope
-      };
+      // 调用 predictionService 的综合预测方法
+      const prediction = await predictionService.comprehensivePrediction(id);
+      return prediction;
     } catch (error) {
       console.error('获取价格预测失败:', error);
-      return { prediction: '预测失败' };
+      return { error: '预测失败' };
     }
   },
 

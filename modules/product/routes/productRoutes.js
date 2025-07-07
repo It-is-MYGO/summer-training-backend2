@@ -37,4 +37,7 @@ router.post('/product-prices', productController.addProductPrice);
 // 支持分页的商品列表
 router.get('/', productController.getAllProducts);
 
+// 价格预测接口
+router.get('/predict/:id', productController.getPricePrediction);
+
 module.exports = router;
