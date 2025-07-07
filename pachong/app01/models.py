@@ -15,7 +15,7 @@ class Goods(models.Model):
     shop_platform = models.CharField(verbose_name="平台", max_length=32)
     goods_link = models.CharField(verbose_name="商品链接", max_length=128)
     grab_time = models.DateTimeField(verbose_name="抓取时间")
-
+    search_keyword = models.CharField(verbose_name="搜索词",max_length=100, blank=True, null=True)
     class Meta:
         db_table = 'app01_goods'
 
