@@ -7,7 +7,7 @@ import csv
 from datetime import datetime
 import re
 
-def crawler(goods_word, max_pages=2, fast_mode=True):
+def crawler(goods_word, max_pages=1, fast_mode=True):
     """
     苏宁商品爬虫
     :param goods_word: 搜索关键词
