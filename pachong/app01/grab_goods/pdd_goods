@@ -2,31 +2,18 @@ import requests
 import time
 import random
 import json
-from bs4 import BeautifulSoup
 import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.edge.service import Service as EdgeService
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
 import pickle
 import os
 import csv
 from datetime import datetime
 
-# 多个User-Agent轮换
-USER_AGENTS = [
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-    'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
-    'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Mobile Safari/537.36',
-]
-
-# Cookie文件路径
-COOKIE_FILE = 'pdd_cookies.pkl'
+# Cookie文件路径 - 使用绝对路径
+COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'pdd_cookies.pkl')
 
 def save_cookies(driver, filename=COOKIE_FILE):
     """保存cookies到文件"""
@@ -46,61 +33,33 @@ def load_cookies(driver, filename=COOKIE_FILE):
         if os.path.exists(filename):
             with open(filename, 'rb') as f:
                 cookies = pickle.load(f)
+            
+            # 检查cookies是否有效
+            valid_cookies = 0
             for cookie in cookies:
                 try:
-                    driver.add_cookie(cookie)
-                except:
+                    # 检查cookie是否包含必要字段
+                    if 'name' in cookie and 'value' in cookie:
+                        driver.add_cookie(cookie)
+                        valid_cookies += 1
+                except Exception as e:
+                    print(f"跳过无效cookie: {e}")
                     continue
-            print(f"Cookies已从 {filename} 加载")
-            return True
+            
+            if valid_cookies > 0:
+                print(f"成功加载 {valid_cookies} 个有效cookies")
+                return True
+            else:
+                print("所有cookies都无效，将重新登录")
+                return False
         else:
-            print(f"Cookie文件 {filename} 不存在")
+            print(f"Cookie文件 {filename} 不存在，需要重新登录")
             return False
     except Exception as e:
         print(f"加载cookies失败: {e}")
         return False
 
-def manual_login_guide():
-    """手动登录指导"""
-    print("\n" + "="*60)
-    print("拼多多手动登录指导")
-    print("="*60)
-    print("\n步骤1：打开浏览器")
-    print("1. 启动Edge浏览器")
-    print("2. 访问 https://mobile.yangkeduo.com")
-    print("\n步骤2：登录账号")
-    print("1. 点击右上角的'登录'按钮")
-    print("2. 选择登录方式：")
-    print("   - 手机号登录")
-    print("   - 微信登录")
-    print("   - QQ登录")
-    print("3. 完成登录验证")
-    print("\n步骤3：验证登录状态")
-    print("1. 登录成功后，尝试搜索商品")
-    print("2. 确认能正常显示搜索结果")
-    print("3. 保持浏览器打开状态")
-    print("\n步骤4：运行爬虫")
-    print("1. 回到命令行")
-    print("2. 选择'使用已登录的浏览器'选项")
-    print("3. 程序会自动获取登录状态")
-    print("="*60)
 
-def get_random_headers():
-    """获取随机的请求头"""
-    return {
-        'User-Agent': random.choice(USER_AGENTS),
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Referer': 'https://mobile.yangkeduo.com/',
-        'Origin': 'https://mobile.yangkeduo.com',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-    }
 
 def search_goods_with_login(keyword, page=1, size=45):
     """使用登录状态搜索商品（Edge驱动）"""
@@ -117,8 +76,32 @@ def search_goods_with_login(keyword, page=1, size=45):
         edge_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         edge_options.add_experimental_option('useAutomationExtension', False)
         
-        driver_path = "msedgedriver.exe"  # Edge驱动路径
-        driver = webdriver.Edge(service=EdgeService(driver_path), options=edge_options)
+        # 尝试多个可能的Edge驱动路径
+        driver_paths = [
+            "msedgedriver.exe",  # 当前目录
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'msedgedriver.exe'),  # 项目根目录
+            "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedgedriver.exe",  # 默认安装路径
+            "C:\\Program Files\\Microsoft\\Edge\\Application\\msedgedriver.exe",  # 64位默认路径
+        ]
+        
+        driver = None
+        for driver_path in driver_paths:
+            try:
+                if os.path.exists(driver_path):
+                    print(f"使用Edge驱动: {driver_path}")
+                    driver = webdriver.Edge(service=EdgeService(driver_path), options=edge_options)
+                    break
+                else:
+                    print(f"Edge驱动不存在: {driver_path}")
+            except Exception as e:
+                print(f"加载Edge驱动失败 {driver_path}: {e}")
+                continue
+        
+        if driver is None:
+            print("❌ 未找到可用的Edge驱动，请确保msedgedriver.exe在正确位置")
+            print("请下载与您的Edge浏览器版本匹配的驱动：")
+            print("https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/")
+            return []
         
         # 执行反检测脚本
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -130,15 +113,17 @@ def search_goods_with_login(keyword, page=1, size=45):
             time.sleep(3)
             
             # 尝试加载已保存的cookies
+            cookies_loaded = False
             if load_cookies(driver):
                 print("使用已保存的登录状态...")
                 # 刷新页面以应用cookies
                 driver.refresh()
                 time.sleep(3)
+                cookies_loaded = True
             else:
-                print("没有找到已保存的登录状态")
+                print("没有找到已保存的登录状态，需要手动登录")
             
-            # 直接搜索商品，不检查登录状态
+            # 直接搜索商品
             search_url = f'https://mobile.yangkeduo.com/search_result.html?search_key={keyword}'
             print(f"正在搜索: {keyword}")
             driver.get(search_url)
@@ -156,12 +141,25 @@ def search_goods_with_login(keyword, page=1, size=45):
             # 提取商品信息
             goods_list = extract_goods_from_search_page(driver, size)
             
-            # 如果没找到商品，可能是未登录，提示用户
+            # 如果没找到商品，提示用户登录
             if not goods_list:
-                print("⚠️ 未找到商品，可能需要登录")
-                print("请在浏览器中完成登录，然后按回车继续...")
+                print("\n" + "="*60)
+                print("⚠️ 未找到商品，需要登录拼多多账号")
+                print("="*60)
+                print("请按以下步骤操作：")
+                print("1. 在打开的浏览器中手动登录拼多多")
+                print("2. 登录成功后，确保能正常搜索商品")
+                print("3. 保持浏览器打开状态")
+                print("4. 回到命令行按回车继续...")
+                print("="*60)
+                
                 input("登录完成后按回车继续...")
-                save_cookies(driver)
+                
+                # 保存新的cookies
+                if save_cookies(driver):
+                    print("✅ 新的登录状态已保存")
+                else:
+                    print("⚠️ 保存登录状态失败")
                 
                 # 重新搜索
                 print("重新搜索商品...")
@@ -215,25 +213,7 @@ def scroll_and_extract_goods(driver, target_count):
     except Exception as e:
         print(f"滑动页面时出错: {e}")
 
-def check_login_status(driver):
-    """简化的登录状态检查 - 仅用于调试"""
-    try:
-        current_url = driver.current_url
-        page_title = driver.title
-        print(f"当前页面: {current_url}")
-        print(f"页面标题: {page_title}")
-        
-        # 简单检查：如果URL包含login，说明未登录
-        if 'login' in current_url.lower():
-            print("检测到登录页面")
-            return False
-        
-        print("页面正常，继续执行...")
-        return True
-            
-    except Exception as e:
-        print(f"检查页面状态时出错: {e}")
-        return True
+
 
 def extract_goods_from_search_page(driver, size):
     """从搜索结果页面提取商品信息"""
@@ -479,33 +459,7 @@ def extract_goods_from_page_source(page_source, size):
 
 
 
-def clean_price_pdd(price):
-    """提取数字并保留两位小数，单位为元（如299.00）"""
-    if not price:
-        return ''
-    price = str(price)
-    price_num = ''.join(c for c in price if c.isdigit() or c == '.')
-    try:
-        price_float = float(price_num)
-        return f"{price_float:.2f}"
-    except:
-        return ''
 
-def clean_sales_pdd(sales):
-    """只保留数字，去掉+、件等"""
-    if not sales:
-        return '0'
-    sales = str(sales)
-    sales_num = ''.join(c for c in sales if c.isdigit())
-    return sales_num or '0'
-
-def clean_text_pdd(text, max_length=200):
-    if not text:
-        return ''
-    text = str(text).replace('\n', '').replace('\r', '').strip()
-    if len(text) > max_length:
-        text = text[:max_length-3] + '...'
-    return text
 
 def save_to_csv_pdd(data, filename='pdd_products.csv', search_keyword=''):
     """
@@ -529,16 +483,16 @@ def save_to_csv_pdd(data, filename='pdd_products.csv', search_keyword=''):
             success_count = 0
             for row in data:
                 mapped = {
-                    'goods_img': clean_text_pdd(row.get('goods_img', '')),
-                    'goods_title': clean_text_pdd(row.get('goods_title', '')),
-                    'goods_price': clean_text_pdd(clean_price_pdd(row.get('goods_price', ''))),
-                    'goods_sales': clean_text_pdd(clean_sales_pdd(row.get('goods_sales', ''))),
-                    'shop_title': clean_text_pdd(row.get('shop_title', '拼多多自营'), 50),
-                    'shop_platform': clean_text_pdd('拼多多'),
-                    'goods_link': clean_text_pdd(row.get('goods_link', '')),
-                    'grab_time': clean_text_pdd(row.get('grab_time', datetime.now().strftime('%Y-%m-%d %H:%M'))),
-                    'page_type': clean_text_pdd('product'),
-                    'search_keyword': clean_text_pdd(search_keyword, 50)
+                    'goods_img': clean_text(row.get('goods_img', '')),
+                    'goods_title': clean_text(row.get('goods_title', '')),
+                    'goods_price': clean_text(str(clean_price(row.get('goods_price', '')))),
+                    'goods_sales': clean_text(clean_sales(row.get('goods_sales', ''))),
+                    'shop_title': clean_text(row.get('shop_title', '拼多多自营'), 50),
+                    'shop_platform': clean_text('拼多多'),
+                    'goods_link': clean_text(row.get('goods_link', '')),
+                    'grab_time': clean_text(row.get('grab_time', datetime.now().strftime('%Y-%m-%d %H:%M'))),
+                    'page_type': clean_text('product'),
+                    'search_keyword': clean_text(search_keyword, 50)
                 }
                 writer.writerow(mapped)
                 success_count += 1
@@ -599,6 +553,15 @@ def clean_sales(sales_text):
     sales_num = re.sub(r'[^\d]', '', str(sales_text))
     return sales_num if sales_num else '0'
 
+def clean_text(text, max_length=200):
+    """清洗文本"""
+    if not text:
+        return ''
+    text = str(text).replace('\n', '').replace('\r', '').strip()
+    if len(text) > max_length:
+        text = text[:max_length-3] + '...'
+    return text
+
 def clean_brand(brand):
     """清洗品牌"""
     if not brand or brand == '未知':
@@ -620,6 +583,36 @@ def main():
     print("注意：拼多多需要登录才能正常搜索商品")
     print("-" * 50)
     
+    # 检查环境
+    print("检查运行环境...")
+    
+    # 检查Edge驱动
+    driver_found = False
+    driver_paths = [
+        "msedgedriver.exe",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'msedgedriver.exe'),
+    ]
+    
+    for path in driver_paths:
+        if os.path.exists(path):
+            print(f"✅ 找到Edge驱动: {path}")
+            driver_found = True
+            break
+    
+    if not driver_found:
+        print("❌ 未找到Edge驱动文件")
+        print("请下载msedgedriver.exe并放在项目根目录")
+        print("下载地址: https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/")
+        return
+    
+    # 检查cookie文件
+    if os.path.exists(COOKIE_FILE):
+        print(f"✅ 找到cookie文件: {COOKIE_FILE}")
+    else:
+        print(f"⚠️ 未找到cookie文件，需要重新登录")
+    
+    print("-" * 50)
+    
     # 获取搜索关键词
     keyword = input("请输入搜索关键词（默认：手机）: ").strip() or "手机"
     
@@ -627,7 +620,7 @@ def main():
     try:
         size = int(input("请输入要采集的商品数量（默认：10）: ").strip() or "50")
     except:
-        size = 30
+        size = 50
     
     print(f"开始搜索关键词: {keyword}，目标数量: {size}")
     
