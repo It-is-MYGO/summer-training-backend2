@@ -12,6 +12,7 @@ const adminRoutes = require('./modules/admin/routes/admin.routes');
 const errorHandler = require('./lib/middleware/errorHandler');
 const logRoutes = require('./modules/log/routes/log.routes');
 const recommendRoutes = require('./modules/recommend/routes/recommend.routes');
+const aiRoutes = require('./modules/ai/routes/ai.routes');
 
 
 const app = express();
@@ -80,6 +81,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/log', logRoutes);
 app.use('/api/recommend', recommendRoutes);
+app.use('/api/ai', aiRoutes);
 
 
 // 404处理 - 确保返回JSON格式
