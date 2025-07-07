@@ -20,6 +20,12 @@ module.exports = {
     if (!product) {
       throw new Error('商品不存在');
     }
+    // 查询最新平台价格，覆盖 current_price 字段
+    const prices = await productRepository.findPlatformPrices(id);
+    if (prices && prices.length > 0) {
+      // 取最低价（如有多平台可自行调整）
+      product.current_price = prices[0].price;
+    }
     return product;
   },
 
